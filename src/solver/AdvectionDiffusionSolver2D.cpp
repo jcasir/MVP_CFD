@@ -1,83 +1,68 @@
-#include "AdvectionDiffusionSolver.h"
+#include "solver/AdvectionDiffusionSolver2D.h"
 #include <iostream>
 #include <fstream>
 #include <cmath>
 #include <algorithm>
 #include <iomanip>
 
-AdvectionDiffusionSolver::AdvectionDiffusionSolver(const std::string& filename)
-    // int nx, double L, double c, double D,
-    // SpatialScheme spatialScheme, TimeScheme timeScheme)
-    // : nx(nx), L(L), c(c), D(D), 
-    //   spatialScheme(spatialScheme), timeScheme(timeScheme),
-    //   t(0.0), bcType(BoundaryCondition::DIRICHLET), bcLeft(0.0), bcRight(0.0)
+AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& config) : BaseSolver(config)
 {
-    // Lettura config
-    ConfigParser cfg(filename);
 
-    const int nx                                = cfg.getInt("GRID_POINTS");
-    const int L                                 = cfg.getInt("DOMAIN_LENGHT");
-    const double c                              = cfg.getDouble("ADVECTION_SPEED");
-    const double D                              = cfg.getDouble("DIFFUSION_SPEED");
-    const double bcLeft                         = cfg.getDouble("BC_LEFT",0.0);
-    const double bcRight                        = cfg.getDouble("BC_RIGHT",0.0);
-    const double dt                             = cfg.getDouble("TIME_STEP");
-    const double tEnd                           = cfg.getDouble("END_TIME");
-    const double t                              = cfg.getDouble("INITIAL_TIME",0.0);
-    const SpatialScheme spatialScheme           = cfg.getEnum("SPATIAL_SCHEME",spatialSchemeMap);
-    const TimeScheme timeScheme                 = cfg.getEnum("TIME_SCHEME",timeSchemeMap);
-    const BoundaryCondition bcType              = cfg.getEnum("BOUNDARY_CONDITIONS",boundaryConditionMap);
-    const InitialCondition initialCondition     = cfg.getEnum("INITIAL_CONDITIONS",initialConditionMap);
+    ny = m_cfg.getInt("GRID_POINTS_X");
+    nx = m_cfg.getInt("GRID_POINTS_Y");
+    Lx = m_cfg.getDouble("DOMAIN_LENGHT_X");
+    Ly = m_cfg.getDouble("DOMAIN_LENGHT_Y");
 
-    const bool verbose                          = cfg.getBool  ("VERBOSE");
 
     // Grid initialization
-    dx = L / (nx - 1);
+    dx = Lx / (nx - 1);
+    dy = Ly / (ny - 1);
+
     x.resize(nx);
+    y.resize(ny);
+
     u.resize(nx, 0.0);
+    v.resize(ny, 0.0);
     
     for (int i = 0; i < nx; ++i) {
         x[i] = i * dx;
     }
+    for (int i = 0; i < ny; ++i) {
+        y[i] = i * dy;
+    }
 
-    std::cout << "Advection-Diffusion Solver 1D Initialised" << std::endl;
-    
-    if (verbose) cfg.print();
-
-    // Setting initial conditions
-    solver.setInitialCondition(retriveInitialConditionFunction(initialCondition));
-
-    // Setting boundary conditions
-    solver.setBoundaryConditions();
+    std::cout << "Advection-Diffusion Solver 2D Initialised" << std::endl;
 }
 
-void AdvectionDiffusionSolver::setInitialCondition(std::function<double(double)> ic) {
+void AdvectionDiffusionSolver2D::setInitialCondition() {
+
+    std::function<double(double)> ic = retriveInitialConditionFunction(initialCondition);
     for (int i = 0; i < nx; ++i) {
         u[i] = ic(x[i]);
     }
     std::cout << "Condizione iniziale impostata." << std::endl;
 }
 
-void AdvectionDiffusionSolver::setBoundaryConditions()
+void AdvectionDiffusionSolver2D::setBoundaryConditions()
 {
     
-    std::cout << "Condizioni al contorno impostate: ";
+    std::cout << "Boundary conditions set: ";
     if (bcType == BoundaryCondition::DIRICHLET) {
         std::cout << "Dirichlet (u[0]=" << bcLeft << ", u[N]=" << bcRight << ")";
     } else if (bcType == BoundaryCondition::NEUMANN) {
         std::cout << "Neumann";
     } else {
-        std::cout << "Periodiche";
+        std::cout << "Periodic";
     }
     std::cout << std::endl;
 }
 
-void AdvectionDiffusionSolver::solve() {
-    std::cout << "\nInizio risoluzione:" << std::endl;
+void AdvectionDiffusionSolver2D::solve() {
+    std::cout << "\nStarting solver:" << std::endl;
     std::cout << "  dt = " << dt << std::endl;
     std::cout << "  t_end = " << tEnd << std::endl;
     std::cout << "  CFL = " << getCFL() << std::endl;
-    std::cout << "  Numero diffusione = " << getDiffusionNumber() << std::endl;
+    std::cout << "  Diffusion number = " << getDiffusionNumber() << std::endl;
     
     int nSteps = 0;
     while (t < tEnd) {
@@ -93,7 +78,7 @@ void AdvectionDiffusionSolver::solve() {
     std::cout << "Risoluzione completata dopo " << nSteps << " passi temporali." << std::endl;
 }
 
-void AdvectionDiffusionSolver::step(double dt) {
+void AdvectionDiffusionSolver2D::step(double dt) {
     if (timeScheme == TimeScheme::EULER_EXPLICIT) {
         // Eulero esplicito: u^(n+1) = u^n + dt * RHS(u^n)
         std::vector<double> rhs = computeRHS(u);
@@ -137,7 +122,7 @@ void AdvectionDiffusionSolver::step(double dt) {
     t += dt;
 }
 
-std::vector<double> AdvectionDiffusionSolver::computeRHS(
+std::vector<double> AdvectionDiffusionSolver2D::computeRHS(
     const std::vector<double>& u_current) const
 {
     std::vector<double> rhs(nx, 0.0);
@@ -154,7 +139,7 @@ std::vector<double> AdvectionDiffusionSolver::computeRHS(
     return rhs;
 }
 
-double AdvectionDiffusionSolver::advectionTerm(
+double AdvectionDiffusionSolver2D::advectionTerm(
     const std::vector<double>& u_current, int i) const
 {
     if (spatialScheme == SpatialScheme::CENTRAL) {
@@ -166,7 +151,7 @@ double AdvectionDiffusionSolver::advectionTerm(
     }
 }
 
-double AdvectionDiffusionSolver::diffusionTerm(
+double AdvectionDiffusionSolver2D::diffusionTerm(
     const std::vector<double>& u_current, int i) const
 {
     // Differenze centrali del secondo ordine per la diffusione
@@ -176,7 +161,7 @@ double AdvectionDiffusionSolver::diffusionTerm(
     return D * (u_current[ip1] - 2.0*u_current[i] + u_current[im1]) / (dx * dx);
 }
 
-double AdvectionDiffusionSolver::centralDifference(
+double AdvectionDiffusionSolver2D::centralDifference(
     const std::vector<double>& u_current, int i) const
 {
     int im1 = (i == 0 && bcType == BoundaryCondition::PERIODIC) ? nx - 1 : i - 1;
@@ -185,7 +170,7 @@ double AdvectionDiffusionSolver::centralDifference(
     return (u_current[ip1] - u_current[im1]) / (2.0 * dx);
 }
 
-double AdvectionDiffusionSolver::upwindDifference(
+double AdvectionDiffusionSolver2D::upwindDifference(
     const std::vector<double>& u_current, int i) const
 {
     if (c > 0) {
@@ -199,7 +184,7 @@ double AdvectionDiffusionSolver::upwindDifference(
     }
 }
 
-double AdvectionDiffusionSolver::quickDifference(
+double AdvectionDiffusionSolver2D::quickDifference(
     const std::vector<double>& u_current, int i) const
 {
     // Schema QUICK (QUadratic Upstream Interpolation for Convective Kinematics)
@@ -221,7 +206,7 @@ double AdvectionDiffusionSolver::quickDifference(
     }
 }
 
-void AdvectionDiffusionSolver::applyBoundaryConditions(std::vector<double>& u_vec) {
+void AdvectionDiffusionSolver2D::applyBoundaryConditions(std::vector<double>& u_vec) {
     if (bcType == BoundaryCondition::DIRICHLET) {
         u_vec[0] = bcLeft;
         u_vec[nx - 1] = bcRight;
@@ -241,43 +226,72 @@ void AdvectionDiffusionSolver::applyBoundaryConditions(std::vector<double>& u_ve
     }
 }
 
-double AdvectionDiffusionSolver::getCFL() const {
+double AdvectionDiffusionSolver2D::getCFL() const {
     return std::abs(c) * dx;  // CFL number (moltiplicare per dt per ottenere condizione)
 }
 
-double AdvectionDiffusionSolver::getDiffusionNumber() const {
+double AdvectionDiffusionSolver2D::getDiffusionNumber() const {
     return D / (dx * dx);  // Diffusion number (moltiplicare per dt)
 }
 
-void AdvectionDiffusionSolver::saveToFile(const std::string& filename) const {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Errore: impossibile aprire il file " << filename << std::endl;
+void AdvectionDiffusionSolver2D::saveCurrentTimeStep() {
+    std::ofstream file(outputfile, std::ios::app);
+    if (!file){
+        std::cerr << "Error: impossible to open file " << outputfile << std::endl;
         return;
     }
-    
-    file << "# x u(x,t=" << t << ")" << std::endl;
-    file << std::scientific << std::setprecision(10);
-    
-    for (int i = 0; i < nx; ++i) {
-        file << x[i] << " " << u[i] << std::endl;
+    file << t << ",";
+    for (int i = 0; i < nx; i++){
+        file << x[i] << "," << u[i] << "," << i;
     }
-    
+    file << '\n';
     file.close();
-    std::cout << "Soluzione salvata in " << filename << std::endl;
+    std::cout << "Current Time step saved into " << outputfile << std::endl;
 }
 
-void AdvectionDiffusionSolver::printStats() const {
-    double uMin = *std::min_element(u.begin(), u.end());
-    double uMax = *std::max_element(u.begin(), u.end());
-    double uMean = 0.0;
-    for (double val : u) {
-        uMean += val;
+void AdvectionDiffusionSolver2D::createOutputFile(){
+    std::ofstream file(outputfile);
+    if (!file){
+        std::cerr << "Error: impossible to create file " << outputfile << std::endl;
+        return;
     }
-    uMean /= nx;
-    
-    std::cout << "\nStatistiche soluzione (t = " << t << "):" << std::endl;
-    std::cout << "  u_min  = " << uMin << std::endl;
-    std::cout << "  u_max  = " << uMax << std::endl;
-    std::cout << "  u_mean = " << uMean << std::endl;
+    file << "t,";
+    for (int i = 0; i < nx; i++){
+        file << "x" << i << ",u" << i;
+    }
+    file << '\n';
+    file.close();
 }
+
+// void AdvectionDiffusionSolver1D::saveToFile(const std::string& filename) const {
+//     std::ofstream file(filename);
+//     if (!file.is_open()) {
+//         std::cerr << "Errore: impossibile aprire il file " << filename << std::endl;
+//         return;
+//     }
+    
+//     file << "# x u(x,t=" << t << ")" << std::endl;
+//     file << std::scientific << std::setprecision(10);
+    
+//     for (int i = 0; i < nx; ++i) {
+//         file << x[i] << " " << u[i] << std::endl;
+//     }
+    
+//     file.close();
+//     std::cout << "Soluzione salvata in " << filename << std::endl;
+// }
+
+// void AdvectionDiffusionSolver1D::printStats() const {
+//     double uMin = *std::min_element(u.begin(), u.end());
+//     double uMax = *std::max_element(u.begin(), u.end());
+//     double uMean = 0.0;
+//     for (double val : u) {
+//         uMean += val;
+//     }
+//     uMean /= nx;
+    
+//     std::cout << "\nStatistiche soluzione (t = " << t << "):" << std::endl;
+//     std::cout << "  u_min  = " << uMin << std::endl;
+//     std::cout << "  u_max  = " << uMax << std::endl;
+//     std::cout << "  u_mean = " << uMean << std::endl;
+// }

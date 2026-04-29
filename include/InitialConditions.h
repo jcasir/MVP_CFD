@@ -3,6 +3,8 @@
 #include <cmath>
 #include <numbers> 
 #include <stdexcept>
+#include <iostream>
+
 
 inline double gaussian(double x) {
     constexpr double x0    = 0.5;
@@ -18,6 +20,10 @@ inline double sinusoidal(double x) {
     return std::sin(2.0 * std::numbers::pi * x);
 }
 
+inline double hat_func(double x, double y, ) {
+    return std::sin(2.0 * std::numbers::pi * x);
+}
+
 template <typename T>
 inline std::function<double(double)> retriveInitialConditionFunction (const T& val){
     switch (val) { 
@@ -27,6 +33,8 @@ inline std::function<double(double)> retriveInitialConditionFunction (const T& v
             return squareWave;
         case T::SINUSOIDAL:
             return sinusoidal;
+        case T::HAT_FUNCTION:
+            return hat_func;
         default:
             std::cerr << "Errore: Condizione iniziale sconosciuta!" << std::endl;
             throw std::invalid_argument("Condizione iniziale sconosciuta");

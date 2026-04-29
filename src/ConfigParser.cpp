@@ -1,4 +1,4 @@
-#include "config_parser.h"
+#include "ConfigParser.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -59,27 +59,12 @@ double ConfigParser::getDouble(const std::string& key) const {
     return parseDouble(key, it->second);
 }
 
-double ConfigParser::getDouble(const std::string& key, double def) const {
-    auto it = data_.find(key);
-    if (it == data_.end()) return def;
-    return parseDouble(key, it->second);
-}
-
 bool ConfigParser::getBool(const std::string& key, bool def) const {
     auto it = data_.find(key);
     if (it == data_.end()) return def;
     std::string v = it->second;
     std::transform(v.begin(), v.end(), v.begin(), ::tolower);
     return (v == "true" || v == "1" || v == "yes");
-}
-
-template <typename T>
-T getEnum(const std::string& key, const std::map<std::string, T>& mapping) const {
-    const std::string& val = getString(key);
-    auto it = mapping.find(val);
-    if (it == mapping.end())
-        throw std::runtime_error("Invalid value '" + val + "' for key: " + key);
-    return it->second;
 }
 
 bool ConfigParser::hasKey(const std::string& key) const {

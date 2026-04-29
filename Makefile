@@ -1,64 +1,100 @@
-# Makefile per il risolutore CFD 1D
+# Makefile for the MVP_CFD solver 
 
-CXX = g++
-CXXFLAGS = -std=c++17 -Wall -O3 -march=native
-LDFLAGS = 
+CXX      = g++
+STANDARD = -std=c++20
+WARN     = -Wall -Wextra -Wpedantic
 
-# File sorgente
-SOURCES = main.cpp AdvectionDiffusionSolver.cpp ConfigParser.cpp
-HEADERS = AdvectionDiffusionSolver.h ConfigParser.h InitialConditions.h math_settings.h
-OBJECTS = $(SOURCES:.cpp=.o)
-EXECUTABLE = solver1d
+# ── Directory ──────────────────────────────────────────────────────────────── 
+SOLDIR   = solver
+SRCDIR   = src
 
-# Target principale
+# ── Sources ──────────────────────────────────────────────────────────────────
+SOURCES  = $(wildcard $(SRCDIR)/$(SOLDIR)/*.cpp) $(wildcard $(SRCDIR)/*.cpp)
+
+# ── Default configuration (default: release) ───────────────────────────────── 
+BUILD    ?= release
+
+ifeq ($(BUILD),debug)
+  OBJDIR    = obj/debug
+  CXXFLAGS  = $(STANDARD) $(WARN) -g -O0 -Iinclude
+  EXECSUFFIX = _debug
+else ifeq ($(BUILD),asan)
+  OBJDIR    = obj/asan
+  CXXFLAGS  = $(STANDARD) $(WARN) -g -O1 -fsanitize=address,undefined -Iinclude
+  LDFLAGS   = -fsanitize=address,undefined
+  EXECSUFFIX = _asan [cite: 2]
+else
+  OBJDIR    = obj/release
+  CXXFLAGS  = $(STANDARD) $(WARN) -O3 -march=native -Iinclude
+  EXECSUFFIX =
+endif
+
+EXECUTABLE = solver1d$(EXECSUFFIX)
+CONFIG     = config.cfg
+
+# ── Objects and automatic dependencies ─────────────────────────────────────── 
+OBJECTS  = $(addprefix $(OBJDIR)/, $(SOURCES:.cpp=.o))
+DEPFILES = $(OBJECTS:.o=.d)
+
+# ── Main Target ──────────────────────────────────────────────────────────────
+.PHONY: all run clean cleanall plot debug asan help
+
 all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)
-	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
-	@echo "Compilazione completata! Eseguibile: $(EXECUTABLE)"
+	$(CXX) $^ -o $@ $(LDFLAGS)
+	@echo "✓ Build [$(BUILD)] completed → $(EXECUTABLE)"
 
-# Regola per compilare i file oggetto
-%.o: %.cpp $(HEADERS)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+# ── Compilation with automatic dependencies (-MMD -MP) ─────────────────────── 
+$(OBJDIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
-# Esegui il programma
-run: $(EXECUTABLE)
-	./$(EXECUTABLE)
+-include $(DEPFILES)
 
-# Pulizia file compilati
+# ── Shortcuts for alternative builds ─────────────────────────────────────────
+debug:
+	$(MAKE) BUILD=debug
+
+asan:
+	$(MAKE) BUILD=asan
+
+# ── Execution ────────────────────────────────────────────────────────────────
+run: all
+	./$(EXECUTABLE) $(CONFIG)
+
+# ── Cleaning ───────────────────────────────────────────────────────────────── 
 clean:
-	rm -f $(OBJECTS) $(EXECUTABLE)
-	rm -f *.dat
+	rm -rf obj/
+	rm -f solver1d solver1d_debug solver1d_asan
 
-# Pulizia completa (include anche i file di output)
 cleanall: clean
 	rm -f *.dat *.txt
 
-# Visualizza i risultati con gnuplot (se disponibile)
+# ── Plot with automatically detected files ─────────────────────────────────── 
+DATFILES = $(wildcard *.dat)
 plot:
-	@echo "set terminal qt; \
-	       set grid; \
-	       set xlabel 'x'; \
-	       set ylabel 'u'; \
-	       plot 'avvezione_t0.dat' w l lw 2 title 'Avvezione t=0', \
-	            'avvezione_t05.dat' w l lw 2 title 'Avvezione t=0.5'; \
-	       pause -1" | gnuplot
+ifeq ($(DATFILES),)
+	@echo "No .dat files found. Run 'make run' first."
+else
+	@echo "$(foreach f,$(DATFILES),'$(f)' w l lw 2 title '$(f)', )" | \
+	  gnuplot -e "set terminal qt; \
+	              set grid; set xlabel 'x'; set ylabel 'u'; \
+	              plot $(shell echo "$(foreach f,$(DATFILES),'$(f)' w l lw 2 title '$(f)',)" | sed 's/,$$//' ); \
+	              pause -1"
+endif
 
-# Debug build
-debug: CXXFLAGS = -std=c++17 -Wall -g -O0
-debug: clean $(EXECUTABLE)
-
-# Help
+# ── Help ────────────────────────────────────────────────────────────────────── 
 help:
-	@echo "Makefile per Solver CFD 1D"
 	@echo ""
-	@echo "Target disponibili:"
-	@echo "  make          - Compila il programma"
-	@echo "  make run      - Compila ed esegue"
-	@echo "  make clean    - Rimuove file oggetto ed eseguibile"
-	@echo "  make cleanall - Rimuove tutto (inclusi file .dat)"
-	@echo "  make plot     - Visualizza risultati con gnuplot"
-	@echo "  make debug    - Compila versione debug"
-	@echo "  make help     - Mostra questo messaggio"
-
-.PHONY: all run clean cleanall plot debug help
+	@echo "  Makefile — MVP_CFD Solver"
+	@echo ""
+	@echo "  make [BUILD=release]   Compile in optimized mode (default)"
+	@echo "  make BUILD=debug       Compile with debug symbols"
+	@echo "  make BUILD=asan        Compile with AddressSanitizer" 
+	@echo "  make run               Compile and run" 
+	@echo "  make clean             Removes all objects and executables"
+	@echo "  make cleanall          Also removes .dat/.txt files" 
+	@echo "  make plot              Visualize all .dat files with gnuplot" 
+	@echo "  make help              Show this message" 
+	@echo ""

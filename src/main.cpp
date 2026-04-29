@@ -1,4 +1,6 @@
-#include "AdvectionDiffusionSolver.h"
+#include "solver/AdvectionDiffusionSolver1D.h"
+#include "solver/AdvectionDiffusionSolver2D.h"
+#include "solver/BaseSolver.h"
 #include <iostream>
 #include <cmath>
 
@@ -13,14 +15,41 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::string config_file {argv[1]};
+    ConfigParser cfg(argv[1]);
+    std::string solver_type = cfg.getString("SOLVER");
 
     std::cout << "========================================" << std::endl;
-    std::cout << "  SOLVER CFD 1D: Avvezione-Diffusione  " << std::endl;
-    std::cout << "========================================" << std::endl;
+    std::cout << "              SOLVER MVP_CFD            " << std::endl;
+    std::cout << "========================================" << std::endl << std::endl;
 
-    AdvectionDiffusionSolver solver(config_file);
+    std::cout << "SOLVER: " << solver_type << std::endl;
+
+
+
+    std::unique_ptr<BaseSolver> solver;
+    if (solver_type == "ADVECTION_DIFFUSION_2D") {
+        solver = std::make_unique<AdvectionDiffusionSolver2D>(cfg);
+    } 
+    else if (solver_type == "ADVECTION_DIFFUSION_1D") {
+        solver = std::make_unique<AdvectionDiffusionSolver1D>(cfg);
+    }
+    else {
+        std::cerr << "Error: solver not recognized" << std::endl;
+        return 1;
+    }
+
+    // Setting initial conditions
+    solver->setInitialCondition();
+
+    // Setting boundary conditions
+    solver->setBoundaryConditions();
+
+    //Initialising the output file;
+    solver->createOutputFile();
     
+    //Solve
+    solver->solve();
+
     // // Condizione iniziale: gaussiana
     // solver.setInitialCondition(gaussiana);
     
@@ -28,16 +57,13 @@ int main(int argc, char* argv[]) {
     // solver.setBoundaryConditions(
     //     AdvectionDiffusionSolver::BoundaryCondition::PERIODIC
     // );
+
+    // // Salva condizione iniziale
+    // solver->saveToFile("results/prova_t0.dat");
     
-    // Salva condizione iniziale
-    solver.saveToFile("avvezione_t0.dat");
-    
-    // Risolvi
-    solver.solve();
-    
-    // Salva risultato
-    solver.saveToFile("avvezione_t05.dat");
-    solver.printStats();
+    // // Salva risultato
+    // solver->saveToFile("results/prova_t05.dat");
+    // solver->printStats();
 
     
     /*
@@ -197,10 +223,7 @@ int main(int argc, char* argv[]) {
     */
     
     std::cout << "\n========================================" << std::endl;
-    std::cout << "  Tutti gli esempi completati!         " << std::endl;
-    std::cout << "  I file .dat possono essere           " << std::endl;
-    std::cout << "  visualizzati con gnuplot:            " << std::endl;
-    std::cout << "  $ gnuplot -p -e \"plot 'file.dat'\"  " << std::endl;
+    std::cout << "          Simulation complete           " << std::endl;
     std::cout << "========================================" << std::endl;
     
     return 0;
