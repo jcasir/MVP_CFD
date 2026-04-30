@@ -21,15 +21,28 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
     x.resize(nx);
     y.resize(ny);
 
-    u.resize(nx, 0.0);
-    v.resize(ny, 0.0);
+    u.resize(nx * ny, 0.0);
+
+    if (verbose) std::cout << "Printing mesh grid:" << '\n' << '\n';
     
     for (int i = 0; i < nx; ++i) {
         x[i] = i * dx;
+        file << x[i] << ",";
+        if (verbose) std::cout << "coordinate x" << i << ": "<< x[i] << '\n';
     }
+    x[nx - 1] = (nx - 1) * dx;
+    file << x[nx - 1];
+    if (verbose) std::cout << "coordinate x" << nx - 1 << ": "<< x[nx - 1] << '\n';
+
     for (int i = 0; i < ny; ++i) {
         y[i] = i * dy;
+        file << y[i] << ",";
+        if (verbose) std::cout << "coordinate y" << i << ": "<< y[i] << '\n';
     }
+    y[ny - 1] = (ny - 1) * dy;
+    file << y[ny - 1];
+    if (verbose) std::cout << "coordinate y" << ny - 1 << ": "<< y[ny - 1] << '\n';
+
 
     std::cout << "Advection-Diffusion Solver 2D Initialised" << std::endl;
 }
