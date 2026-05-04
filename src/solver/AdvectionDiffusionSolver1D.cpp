@@ -7,6 +7,8 @@
 
 AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) : BaseSolver(cfg)
 {
+    verifyInitialStability();
+
     // Grid initialization
     dx = L / (nx - 1);
     x.resize(nx);
@@ -133,10 +135,11 @@ std::vector<double> AdvectionDiffusionSolver1D::computeRHS(
 {
     std::vector<double> rhs(nx, 0.0);
     
-    // Calculate RHS for internal points
+    // Calculate RHS for boundary points
     int start = (bcType == BoundaryCondition::PERIODIC) ? 0 : 1;
     int end = (bcType == BoundaryCondition::PERIODIC) ? nx : nx - 1;
     
+    // Calculate RHS for internal points
     for (int i = start; i < end; ++i) {
         // RHS = -c * ∂u/∂x + D * ∂²u/∂x²
         rhs[i] = -advectionTerm(u_current, i) + diffusionTerm(u_current, i);
@@ -233,11 +236,11 @@ void AdvectionDiffusionSolver1D::applyBoundaryConditions(std::vector<double>& u_
 }
 
 double AdvectionDiffusionSolver1D::getCFL() const {
-    return std::abs(c) * dx;  // CFL number (multiply by dt to check stability)
+    return (std::abs(c) * dt) / dx;  // CFL number 
 }
 
 double AdvectionDiffusionSolver1D::getDiffusionNumber() const {
-    return D / (dx * dx);  // Diffusion number (multiply by dt)
+    return (D * dt) / (dx * dx);  // Diffusion number 
 }
 
 void AdvectionDiffusionSolver1D::saveCurrentTimeStep() {
