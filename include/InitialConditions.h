@@ -2,7 +2,7 @@
 #pragma once
 #include <cmath>
 #include <numbers> 
-#include <stdexcept>
+#include <ErrorHandler.h>
 #include <iostream>
 
 
@@ -46,7 +46,6 @@ inline std::function<double(double)> retriveInitialConditionFunction (const T& v
         case T::SINUSOIDAL:
             return sinusoidal;
         default:
-            std::cerr << "Errore: Condizione iniziale sconosciuta!" << std::endl;
-            throw std::invalid_argument("Condizione iniziale sconosciuta");
+            throw InvalidOption("Error: Unknown initial condition");
     }
 }

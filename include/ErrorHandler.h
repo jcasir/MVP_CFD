@@ -17,3 +17,10 @@ public:
         : GeneralError("Error: " + msg + " = " + std::to_string(v) + '\n'
             + "Limit for Explicit Schemes = " + std::to_string(limit)) {}
 };
+
+class InvalidOption : public GeneralError {
+public:
+    InvalidOption(const std::string& msg, double v, double limit) 
+        : GeneralError(msg) {}
+};
+
