@@ -7,7 +7,7 @@
 
 AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) : BaseSolver(cfg)
 {
-    verifyInitialStability();
+    checkStability();
 
     // Grid initialization
     dx = L / (nx - 1);
