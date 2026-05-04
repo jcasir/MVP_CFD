@@ -15,10 +15,10 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
     // Lettura config
 
     nx               = m_cfg.getInt("GRID_POINTS");
-    L                = m_cfg.getInt("DOMAIN_LENGHT");
     output_freq      = m_cfg.getInt("OUTPUT_FREQUENCY");
     time_iter        = 0;
 
+    L                = m_cfg.getDouble("DOMAIN_LENGHT");
     c                = m_cfg.getDouble("ADVECTION_SPEED");
     D                = m_cfg.getDouble("DIFFUSION_COEFF");
     bcLeft           = m_cfg.getDouble("BC_LEFT");
@@ -41,4 +41,36 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
     std::cout << "Base parameters of the solver initialized" << std::endl;
     
     if (verbose) m_cfg.print();
+}
+
+
+bool BaseSolver::getExplicitSchemeFlag(){
+    return (timeScheme == TimeScheme::EULER_EXPLICIT || 
+            timeScheme == TimeScheme::RK4);
+}
+
+void BaseSolver::checkStability(){
+    
+    std::cout << "Verifying time stability" << std::endl;
+
+    double cfl  = getCFL();
+    double diff = getDiffusionNumber();
+    bool flagExplicit = getExplicitSchemeFlag();
+
+    if (flagExplicit && cfl > 1){
+        std::cerr << "Warning: CFL = " << cfl << " > 1\n";
+    }
+    else {
+        std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << "Time scheme, CFL = " << cfl << '\n';
+    }
+
+    std::cout << "Verifying diffusion stability" << std::endl;
+
+    if (flagExplicit && diff > 0.5){
+        std::cerr << "Warning: Diffusion number = " << diff << " > 0.5\n";
+    }
+    else {
+        std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << "Time scheme, Diffusion number = " << diff << '\n';
+    }
+
 }

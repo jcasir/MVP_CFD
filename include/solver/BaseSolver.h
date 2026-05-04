@@ -76,5 +76,9 @@ protected:
     std::string outputfile;
     std::string mesh_file;
     int output_freq;
+
+    //Methods to check stability
+    void checkStability() const;
+    bool getExplicitSchemeFlag() const;
 };
 
