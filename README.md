@@ -141,7 +141,13 @@ Results are saved as `.csv` files in the `results/` directory:
 - `mesh.csv` — grid coordinates
 - `output.csv` — solution `u` at each saved time step (one row per step)
 
-Visualization is handled by a Python script. Details to be added.
+Visualization is handled by a Python script inside the `results/` directory: visualize.py
+
+To visualize the results simply run:
+
+```bash
+pyhton3 visualize.py
+```
 
 ## Project Structure
 
@@ -178,8 +184,8 @@ MVP_CFD/
 ## References
 
 1. LeVeque, R. J. (2002). *Finite Volume Methods for Hyperbolic Problems*
-2. Versteeg & Malalasekera (2007). *An Introduction to Computational Fluid Dynamics*
-3. Ferziger & Perić (2002). *Computational Methods for Fluid Dynamics*
+2. Lorena A. Barba *CFD Python: 12 steps to Navier-Stokes*
+3. Notes from university courses at Politecnico di Milano.
 
 ## License
 
