@@ -1,208 +1,179 @@
-# Risolutore CFD 1D: Equazione di Avvezione-Diffusione
+# MVP_CFD — Advection-Diffusion Solver
 
-Un solver numerico in C++ per l'equazione di avvezione-diffusione monodimensionale.
+A numerical solver in C++ for the advection-diffusion equation, currently supporting 1D and 2D formulations. Designed as a modular, extensible framework with future support for RANS equations planned.
 
-## Equazione Risolta
+## Equation Solved
 
 ```
 ∂u/∂t + c·∂u/∂x = D·∂²u/∂x²
 ```
 
-dove:
-- `u(x,t)` è la variabile incognita (concentrazione, temperatura, ecc.)
-- `c` è la velocità di avvezione [m/s]
-- `D` è il coefficiente di diffusione [m²/s]
-- `x` è la coordinata spaziale
-- `t` è il tempo
+where:
+- `u(x,t)` — unknown variable (concentration, temperature, etc.)
+- `c` — advection speed [m/s]
+- `D` — diffusion coefficient [m²/s]
 
-## Caratteristiche
+## Features
 
-### Schemi Spaziali
-1. **Central Difference** (2° ordine)
-   - Accurato ma può presentare oscillazioni spurie
-   - Ottimo per diffusione dominante (Pe < 2)
+### Spatial Schemes
+| Scheme | Order | Notes |
+|--------|-------|-------|
+| Central Difference | 2nd | May produce spurious oscillations at high Pe |
+| Upwind | 1st | Stable and monotone, recommended for advection-dominated flows |
+| QUICK | 3rd | Higher accuracy, requires finer grids |
 
-2. **Upwind** (1° ordine)
-   - Stabile e monotono
-   - Più diffusivo numericamente
-   - Consigliato per avvezione dominante
+### Time Schemes
+| Scheme | Order | Notes |
+|--------|-------|-------|
+| Explicit Euler | 1st | Simple, subject to CFL and diffusion stability limits |
+| Runge-Kutta 4 | 4th | High accuracy, recommended for precision simulations |
 
-3. **QUICK** (3° ordine)
-   - Quadratic Upstream Interpolation
-   - Maggiore accuratezza
-   - Necessita di griglia più fine
+### Boundary Conditions
+- **Dirichlet** — fixed value at boundaries
+- **Neumann** — fixed derivative at boundaries
+- **Periodic** — u(0) = u(L)
 
-### Schemi Temporali
-1. **Eulero Esplicito** (1° ordine)
-   - Semplice e veloce
-   - Limitazioni di stabilità: CFL < 1, numero diffusione < 0.5
+### Initial Conditions
+- **Gaussian** — smooth bell-shaped profile
+- **Square wave** — sharp step profile
+- **Sinusoidal** — smooth periodic oscillation
 
-2. **Runge-Kutta 4** (4° ordine)
-   - Alta accuratezza temporale
-   - Maggiore stabilità
-   - Consigliato per simulazioni di precisione
+## Dimensionless Numbers
 
-### Condizioni al Contorno
-1. **Dirichlet**: Valore fisso ai bordi
-2. **Neumann**: Derivata fissa ai bordi
-3. **Periodiche**: u(0) = u(L)
-
-## Numeri Adimensionali
-
-### Numero di Courant-Friedrichs-Lewy (CFL)
+### Courant-Friedrichs-Lewy (CFL)
 ```
-CFL = c·Δt/Δx
+CFL = c·Δt/Δx ≤ 1   (explicit schemes)
 ```
-**Condizione di stabilità** (Eulero esplicito): CFL ≤ 1
 
-### Numero di Diffusione
+### Diffusion Number
 ```
-Diff = D·Δt/Δx²
+Diff = D·Δt/Δx² ≤ 0.5   (explicit schemes)
 ```
-**Condizione di stabilità** (Eulero esplicito): Diff ≤ 0.5
 
-### Numero di Peclet
+### Peclet Number
 ```
 Pe = c·L/D
 ```
-- Pe << 1: Diffusione dominante
-- Pe >> 1: Avvezione dominante
-- Pe ~ 1: Regime misto
+- Pe << 1 — diffusion dominated
+- Pe >> 1 — advection dominated
+- Pe ~ 1 — mixed regime
 
-## Compilazione
+## Build
+
+The project uses a Makefile with three build configurations:
 
 ```bash
-# Compilazione standard (ottimizzata)
-make
-
-# Compilazione debug
-make debug
-
-# Pulizia
-make clean
+make                  # Release build (optimized, -O3)
+make BUILD=debug      # Debug build (-g, no optimization)
+make BUILD=asan       # AddressSanitizer build (memory/UB checks)
 ```
 
-## Utilizzo
+Executables produced:
+- `solver1d` — release
+- `solver1d_debug` — debug
+- `solver1d_asan` — asan
 
-### Esempio Base
-
-```cpp
-#include "AdvectionDiffusionSolver.h"
-
-// Parametri del problema
-int nx = 201;           // Numero di punti griglia
-double L = 1.0;         // Lunghezza dominio [m]
-double c = 1.0;         // Velocità avvezione [m/s]
-double D = 0.01;        // Coefficiente diffusione [m²/s]
-
-// Crea solver
-AdvectionDiffusionSolver solver(
-    nx, L, c, D,
-    AdvectionDiffusionSolver::SpatialScheme::CENTRAL,
-    AdvectionDiffusionSolver::TimeScheme::RK4
-);
-
-// Imposta condizione iniziale
-solver.setInitialCondition([](double x) {
-    return exp(-pow(x - 0.5, 2) / 0.01);
-});
-
-// Imposta condizioni al contorno
-solver.setBoundaryConditions(
-    AdvectionDiffusionSolver::BoundaryCondition::DIRICHLET,
-    0.0,  // Valore a x=0
-    0.0   // Valore a x=L
-);
-
-// Risolvi
-double dt = 0.001;      // Passo temporale [s]
-double tEnd = 1.0;      // Tempo finale [s]
-solver.solve(dt, tEnd);
-
-// Salva risultati
-solver.saveToFile("output.dat");
-solver.printStats();
-```
-
-### Scelta dei Parametri Numerici
-
-1. **Passo spaziale (Δx)**:
-   - Risolvi le strutture più piccole: Δx < λ/10
-   - Numero di Peclet di griglia: Pe_grid = c·Δx/D < 2 (per schema centrale)
-
-2. **Passo temporale (Δt)**:
-   - CFL ≤ 1 per stabilità
-   - Diff ≤ 0.5 per stabilità
-   - Δt < min(Δx/c, Δx²/2D)
-
-3. **Schema numerico**:
-   - Pe > 2: usa Upwind o QUICK
-   - Pe < 2: usa Central Difference
-   - Alta precisione: usa RK4
-
-## Esempi Inclusi
-
-Il file `main.cpp` contiene 4 esempi dimostrativi:
-
-1. **Avvezione pura** (D=0): Trasporto di un profilo gaussiano
-2. **Diffusione pura** (c=0): Smussamento di un'onda quadra
-3. **Avvezione-Diffusione**: Evoluzione di un profilo sinusoidale
-4. **Alto Peclet**: Regime dominato dall'avvezione
-
-Esegui con:
 ```bash
-make run
+make run              # Build (release) and run with config.cfg
+make clean            # Remove objects and executables
+make cleanall         # Also remove output files
+make help             # Show all available targets
 ```
 
-## Visualizzazione Risultati
+## Usage
 
-I risultati sono salvati in formato ASCII (file `.dat`) con colonne `x u(x,t)`.
-
-### Gnuplot
 ```bash
-gnuplot -p -e "plot 'avvezione_t0.dat' w l, 'avvezione_t05.dat' w l"
+./solver1d <config_file>
+# example:
+./solver1d config.cfg
 ```
 
-### Python
-```python
-import numpy as np
-import matplotlib.pyplot as plt
+## Configuration File
 
-data = np.loadtxt('output.dat')
-plt.plot(data[:,0], data[:,1])
-plt.xlabel('x')
-plt.ylabel('u')
-plt.show()
+The solver is fully configured via a `.cfg` text file. Lines starting with `#` are comments.
+
+```ini
+# Solver type
+SOLVER = ADVECTION_DIFFUSION_1D      # or ADVECTION_DIFFUSION_2D
+
+# Grid
+GRID_POINTS    = 201
+DOMAIN_LENGHT  = 1.0
+
+# Physics
+ADVECTION_SPEED = 1.0
+DIFFUSION_COEFF = 0.01
+
+# Time settings
+TIME_STEP    = 0.001
+INITIAL_TIME = 0.0
+END_TIME     = 1.5
+
+# Numerical schemes
+SPATIAL_SCHEME = UPWIND              # CENTRAL | UPWIND | QUICK
+TIME_SCHEME    = RK4                 # EULER_EXPLICIT | RK4
+
+# Initial condition
+INITIAL_CONDITIONS = GAUSSIAN        # GAUSSIAN | SQUARE_WAVE | SINUSOIDAL
+
+# Boundary conditions
+BOUNDARY_CONDITIONS = PERIODIC       # DIRICHLET | NEUMANN | PERIODIC
+BC_LEFT  = 0.0
+BC_RIGHT = 0.0
+
+# Output
+VERBOSE          = true
+OUTPUT_FILE      = results/output.csv
+MESH_FILE        = results/mesh.csv
+OUTPUT_FREQUENCY = 10                # Save every N time steps
 ```
 
-## Applicazioni
+## Results and Visualization
 
-- Trasporto di inquinanti in fiume
-- Diffusione termica con convezione
-- Trasporto di specie chimiche
-- Propagazione di segnali
-- Modelli di traffico
+Results are saved as `.csv` files in the `results/` directory:
+- `mesh.csv` — grid coordinates
+- `output.csv` — solution `u` at each saved time step (one row per step)
 
-## Sviluppi Futuri
+Visualization is handled by a Python script. Details to be added.
 
-- [ ] Schemi impliciti (Crank-Nicolson)
-- [ ] Griglia non uniforme
-- [ ] Coefficienti variabili c(x), D(x)
-- [ ] Termini sorgente
-- [ ] Equazioni 2D/3D
-- [ ] Parallelizzazione OpenMP/MPI
-- [ ] Output VTK per Paraview
+## Project Structure
 
-## Riferimenti
+```
+MVP_CFD/
+├── include/
+│   └── solver/
+│       ├── BaseSolver.h
+│       ├── AdvectionDiffusionSolver1D.h
+│       └── AdvectionDiffusionSolver2D.h
+├── src/
+│   ├── main.cpp
+│   └── solver/
+│       ├── BaseSolver.cpp
+│       ├── AdvectionDiffusionSolver1D.cpp
+│       └── AdvectionDiffusionSolver2D.cpp
+├── config.cfg
+├── Makefile
+└── README.md
+```
+
+## Roadmap
+
+- [x] 1D Advection-Diffusion solver
+- [ ] 2D Advection-Diffusion solver *(in progress)*
+- [ ] Implicit schemes (Crank-Nicolson)
+- [ ] Non-uniform grids
+- [ ] Variable coefficients c(x), D(x)
+- [ ] Source terms
+- [ ] RANS equations
+- [ ] OpenMP/MPI parallelisation
+- [ ] VTK output for Paraview
+
+## References
 
 1. LeVeque, R. J. (2002). *Finite Volume Methods for Hyperbolic Problems*
 2. Versteeg & Malalasekera (2007). *An Introduction to Computational Fluid Dynamics*
 3. Ferziger & Perić (2002). *Computational Methods for Fluid Dynamics*
 
-## Licenza
+## License
 
-Codice libero per uso educativo e di ricerca.
-
-## Autore
-
-Progetto didattico per apprendimento CFD
+Free for educational and research use.
