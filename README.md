@@ -82,6 +82,13 @@ make help             # Show all available targets
 
 ## Usage
 
+The quickest way to run is:
+```bash
+make run
+```
+
+This builds the project (if needed) and runs it automatically with config.cfg. To use a different config file, run the executable directly:
+
 ```bash
 ./solver1d <config_file>
 # example:
