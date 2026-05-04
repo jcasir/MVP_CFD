@@ -23,6 +23,18 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
 
     u.resize(nx * ny, 0.0);
 
+    std::ofstream file(mesh_file);
+    // Handle the "fencepost problem": write the first element outside the loop
+    // to ensure the comma acts only as a separator between elements.    
+    file << "x0";
+    for (int i = 1; i < nx; ++i){
+        file << ",x" << i;
+    }
+    for (int i = 0; i < ny; ++i){
+        file << ",y" << i;
+    }
+    file << '\n';
+
     if (verbose) std::cout << "Printing mesh grid:" << '\n' << '\n';
     
     for (int i = 0; i < nx; ++i) {

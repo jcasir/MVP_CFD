@@ -7,20 +7,23 @@
 
 AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) : BaseSolver(cfg)
 {
-    checkStability();
 
     // Grid initialization
     dx = L / (nx - 1);
     x.resize(nx);
     u.resize(nx, 0.0);
 
+    // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
+    checkStability();
+
     std::ofstream file(mesh_file);
-    file << "x" << "0";
+    // Handle the "fencepost problem": write the first element outside the loop
+    // to ensure the comma acts only as a separator between elements.    
+    file << "x0";
     for (int i = 1; i < nx; ++i){
         file << ",x" << i;
     }
     file << '\n';
-
 
     if (verbose) std::cout << "Printing mesh grid:" << '\n' << '\n';
     

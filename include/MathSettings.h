@@ -23,7 +23,8 @@ enum class BoundaryCondition {
 enum class InitialCondition {
     GAUSSIAN,      // Bell-shaped smooth curve
     SQUARE_WAVE,        // Alternating high-low signal
-    SINUSOIDAL        // Smooth periodic oscillation
+    SINUSOIDAL,        // Smooth periodic oscillation
+    HAT_FUNCTION
 };
 
 //enum maps initialisation

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "math_settings.h"
+#include "MathSettings.h"
 #include "ConfigParser.h"
+#include "ErrorHandler.h"
+#include <stdexcept>
 #include <vector>
 #include <string>
 #include <functional>

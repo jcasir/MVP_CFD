@@ -25,30 +25,37 @@ int main(int argc, char* argv[]) {
     std::cout << "SOLVER: " << solver_type << std::endl;
 
 
+    try{
+        std::unique_ptr<BaseSolver> solver;
+        if (solver_type == "ADVECTION_DIFFUSION_2D") {
+            solver = std::make_unique<AdvectionDiffusionSolver2D>(cfg);
+        } 
+        else if (solver_type == "ADVECTION_DIFFUSION_1D") {
+            solver = std::make_unique<AdvectionDiffusionSolver1D>(cfg);
+        }
+        else {
+            std::cerr << "Error: solver not recognized" << std::endl;
+            return 1;
+        }
 
-    std::unique_ptr<BaseSolver> solver;
-    if (solver_type == "ADVECTION_DIFFUSION_2D") {
-        solver = std::make_unique<AdvectionDiffusionSolver2D>(cfg);
-    } 
-    else if (solver_type == "ADVECTION_DIFFUSION_1D") {
-        solver = std::make_unique<AdvectionDiffusionSolver1D>(cfg);
+        // Setting initial conditions
+        solver->setInitialCondition();
+
+        // Setting boundary conditions
+        solver->setBoundaryConditions();
+
+        //Initialising the output file;
+        solver->createOutputFile();
+        
+        //Solve
+        solver->solve();
     }
-    else {
-        std::cerr << "Error: solver not recognized" << std::endl;
-        return 1;
+    catch (const GeneralError& e){
+        std::cerr << "\n[FATAL ERROR] " << e.what() << '\n';
+        return EXIT_FAILURE; 
     }
 
-    // Setting initial conditions
-    solver->setInitialCondition();
-
-    // Setting boundary conditions
-    solver->setBoundaryConditions();
-
-    //Initialising the output file;
-    solver->createOutputFile();
-    
-    //Solve
-    solver->solve();
+    return EXIT_SUCCESS;
 
     // // Condizione iniziale: gaussiana
     // solver.setInitialCondition(gaussiana);

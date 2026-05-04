@@ -44,13 +44,13 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
 }
 
 
-bool BaseSolver::getExplicitSchemeFlag(){
+bool BaseSolver::getExplicitSchemeFlag() const {
     return (timeScheme == TimeScheme::EULER_EXPLICIT || 
             timeScheme == TimeScheme::RK4);
 }
 
-void BaseSolver::checkStability(){
-    
+void BaseSolver::checkStability() const {
+
     std::cout << "Verifying time stability" << std::endl;
 
     double cfl  = getCFL();
@@ -58,19 +58,21 @@ void BaseSolver::checkStability(){
     bool flagExplicit = getExplicitSchemeFlag();
 
     if (flagExplicit && cfl > 1){
-        std::cerr << "Warning: CFL = " << cfl << " > 1\n";
+        throw InitialStabilityException("CFL",cfl,1.0); //last argument is the limit for this specific stability check
     }
     else {
-        std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << "Time scheme, CFL = " << cfl << '\n';
+        std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << " Time scheme" << '\n';
+        std::cout << " CFL = " << cfl << " (Limit for Explicit Schemes = 1.0)" << '\n' << '\n';
     }
 
     std::cout << "Verifying diffusion stability" << std::endl;
 
     if (flagExplicit && diff > 0.5){
-        std::cerr << "Warning: Diffusion number = " << diff << " > 0.5\n";
+        throw InitialStabilityException("Diffusion number",diff,0.5); //last argument is the limit for this specific stability check
     }
     else {
-        std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << "Time scheme, Diffusion number = " << diff << '\n';
+        std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << " Time scheme" << '\n';
+        std::cout << " Diffusion number = " << diff << " (Limit for Explicit Schemes = 0.5)" << '\n' << '\n';
     }
 
 }

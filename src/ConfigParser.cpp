@@ -74,6 +74,7 @@ bool ConfigParser::hasKey(const std::string& key) const {
 void ConfigParser::print() const {
     for (const auto& [k, v] : data_)
         std::cout << k << " = " << v << "\n";
+    std::cout << '\n';
 }
 
 std::string ConfigParser::trim(const std::string& s) {
