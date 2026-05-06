@@ -44,8 +44,8 @@ int main(int argc, char* argv[]) {
         // Setting boundary conditions
         solver->setBoundaryConditions();
 
-        //Initialising the output file;
-        solver->createOutputFile();
+        // //Initialising the output file;
+        // solver->createOutputFile();
         
         //Solve
         solver->solve();

@@ -1,4 +1,5 @@
 #include "solver/AdvectionDiffusionSolver2D.hpp"
+#include "vtuWriter.hpp"
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -25,6 +26,9 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
 
     initialCondition = makeIC2D(m_cfg);
 
+    // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
+    checkStability();
+
     std::ofstream file(mesh_file);
     
     // Handle the "fencepost problem": write the first element outside the loop
@@ -45,31 +49,29 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
         file << x[i] << ",";
         if (verbose) std::cout << "coordinate x" << i << ": "<< x[i] << '\n';
     }
-    x[nx - 1] = (nx - 1) * dx;
-    file << x[nx - 1];
-    if (verbose) std::cout << "coordinate x" << nx - 1 << ": "<< x[nx - 1] << '\n';
 
     for (int i = 0; i < ny; ++i) {
         y[i] = i * dy;
         file << y[i] << ",";
         if (verbose) std::cout << "coordinate y" << i << ": "<< y[i] << '\n';
     }
-    y[ny - 1] = (ny - 1) * dy;
-    file << y[ny - 1];
-    if (verbose) std::cout << "coordinate y" << ny - 1 << ": "<< y[ny - 1] << '\n';
 
 
     std::cout << "Advection-Diffusion Solver 2D Initialised" << std::endl;
 
-    //print initial condition
-
-    
 }
 
 void AdvectionDiffusionSolver2D::setInitialCondition() {
 
     initialCondition->setIC(u,x,y);
     std::cout << "Condizione iniziale impostata." << std::endl;
+
+    //print initial condition
+    // VTUWriter wants the number of cells so it must be given (nx - 1) because nx is the number of points
+    // 1 for nz is the default to set the dimension to 2D.
+    VTUWriter vtuW(makeVTUFilename(output_file,0),(nx - 1),(ny - 1),1,dx,dy,0.0, 0.0,0.0,0.0);
+    vtuW.addScalar("u",u);
+    vtuW.write();
 }
 
 void AdvectionDiffusionSolver2D::setBoundaryConditions()
@@ -256,41 +258,41 @@ void AdvectionDiffusionSolver2D::applyBoundaryConditions(std::vector<double>& u_
 }
 
 double AdvectionDiffusionSolver2D::getCFL() const {
-    return std::abs(c) * dx;  // CFL number (moltiplicare per dt per ottenere condizione)
+    return (std::abs(c) * dt) / dx;  // CFL number 
 }
 
 double AdvectionDiffusionSolver2D::getDiffusionNumber() const {
-    return D / (dx * dx);  // Diffusion number (moltiplicare per dt)
+    return (D * dt) / (dx * dx);  // Diffusion number 
 }
 
-void AdvectionDiffusionSolver2D::saveCurrentTimeStep() {
-    std::ofstream file(outputfile, std::ios::app);
-    if (!file){
-        std::cerr << "Error: impossible to open file " << outputfile << std::endl;
-        return;
-    }
-    file << t << ",";
-    for (int i = 0; i < nx; i++){
-        file << x[i] << "," << u[i] << "," << i;
-    }
-    file << '\n';
-    file.close();
-    std::cout << "Current Time step saved into " << outputfile << std::endl;
-}
+// void AdvectionDiffusionSolver2D::saveCurrentTimeStep() {
+//     std::ofstream file(outputfile, std::ios::app);
+//     if (!file){
+//         std::cerr << "Error: impossible to open file " << outputfile << std::endl;
+//         return;
+//     }
+//     file << t << ",";
+//     for (int i = 0; i < nx; i++){
+//         file << x[i] << "," << u[i] << "," << i;
+//     }
+//     file << '\n';
+//     file.close();
+//     std::cout << "Current Time step saved into " << outputfile << std::endl;
+// }
 
-void AdvectionDiffusionSolver2D::createOutputFile(){
-    std::ofstream file(outputfile);
-    if (!file){
-        std::cerr << "Error: impossible to create file " << outputfile << std::endl;
-        return;
-    }
-    file << "t,";
-    for (int i = 0; i < nx; i++){
-        file << "x" << i << ",u" << i;
-    }
-    file << '\n';
-    file.close();
-}
+// void AdvectionDiffusionSolver2D::createOutputFile(){
+//     std::ofstream file(outputfile);
+//     if (!file){
+//         std::cerr << "Error: impossible to create file " << outputfile << std::endl;
+//         return;
+//     }
+//     file << "t,";
+//     for (int i = 0; i < nx; i++){
+//         file << "x" << i << ",u" << i;
+//     }
+//     file << '\n';
+//     file.close();
+// }
 
 // void AdvectionDiffusionSolver1D::saveToFile(const std::string& filename) const {
 //     std::ofstream file(filename);

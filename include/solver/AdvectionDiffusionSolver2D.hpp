@@ -25,12 +25,6 @@ public:
     void solve() override;
     void step(double dt) override;
     
-    // Output
-    void saveCurrentTimeStep();
-    void createOutputFile() override;
-    // void saveToFile(const std::string& filename) const override;
-    // void printStats() const override;
-    
     // Getters
     double getCFL() const override;
     double getDiffusionNumber() const override;
