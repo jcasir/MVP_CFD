@@ -60,6 +60,10 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
 
 
     std::cout << "Advection-Diffusion Solver 2D Initialised" << std::endl;
+
+    //print initial condition
+
+    
 }
 
 void AdvectionDiffusionSolver2D::setInitialCondition() {

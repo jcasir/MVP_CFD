@@ -72,7 +72,7 @@ protected:
     bool verbose;
 
     //output file
-    std::string outputfile;
+    std::string output_file;
     std::string mesh_file;
     int output_freq;
 

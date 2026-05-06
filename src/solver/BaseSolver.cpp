@@ -33,7 +33,7 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
 
     verbose          = m_cfg.getBool("VERBOSE");
 
-    outputfile       = m_cfg.getString("OUTPUT_FILE");
+    output_file       = m_cfg.getString("OUTPUT_FILE");
     mesh_file        = m_cfg.getString("MESH_FILE");
 
 

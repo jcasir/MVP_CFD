@@ -246,9 +246,9 @@ double AdvectionDiffusionSolver1D::getDiffusionNumber() const {
 }
 
 void AdvectionDiffusionSolver1D::saveCurrentTimeStep() {
-    std::ofstream file(outputfile, std::ios::app);
+    std::ofstream file(output_file, std::ios::app);
     if (!file){
-        std::cerr << "Error: impossible to open file " << outputfile << std::endl;
+        std::cerr << "Error: impossible to open file " << output_file << std::endl;
         return;
     }
     file << '\n';
@@ -259,13 +259,13 @@ void AdvectionDiffusionSolver1D::saveCurrentTimeStep() {
         file << "," << u[i];
     }
     file.close();
-    std::cout << "Step: " << time_iter << " saved into: " << outputfile << std::endl;
+    std::cout << "Step: " << time_iter << " saved into: " << output_file << std::endl;
 }
 
 void AdvectionDiffusionSolver1D::createOutputFile(){
-    std::ofstream file(outputfile);
+    std::ofstream file(output_file);
     if (!file){
-        std::cerr << "Error: impossible to create file " << outputfile << std::endl;
+        std::cerr << "Error: impossible to create file " << output_file << std::endl;
         return;
     }
     file << "t";
