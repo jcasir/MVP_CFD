@@ -1,4 +1,4 @@
-#include "solver/AdvectionDiffusionSolver1D.h"
+#include "solver/AdvectionDiffusionSolver1D.hpp"
 #include <iostream>
 #include <fstream>
 #include <cmath>

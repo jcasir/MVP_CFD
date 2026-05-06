@@ -1,8 +1,8 @@
 #pragma once
 
-#include "MathSettings.h"
-#include "ConfigParser.h"
-#include "ErrorHandler.h"
+#include "MathSettings.hpp"
+#include "ConfigParser.hpp"
+#include "ErrorHandler.hpp"
 #include <stdexcept>
 #include <vector>
 #include <string>

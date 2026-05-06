@@ -1,27 +1,30 @@
 #pragma once
 
-#include "MathSettings.h"
-#include "ConfigParser.h"
-#include "InitialConditions.h"
-#include "BaseSolver.h"
+#include "MathSettings.hpp"
+#include "ConfigParser.hpp"
+#include "InitialConditions.hpp"
+#include "BaseSolver.hpp"
+#include "ErrorHandler.hpp"
 #include <stdexcept>
 #include <vector>
 #include <string>
 #include <functional>
 
 /**
- * 2D solver for the linear convection equation:
- * ∂u/∂t + c*∂u/∂x + c*∂u/∂y = 0
+ * Risolutore 1D per l'equazione di avvezione-diffusione:
+ * ∂u/∂t + c*∂u/∂x = D*∂²u/∂x²
  */
-class AdvectionDiffusionSolver2D : public BaseSolver {
+class AdvectionDiffusionSolver1D : public BaseSolver {
 public:
-    AdvectionDiffusionSolver2D(const ConfigParser& config);
     
-    // Configuration methods
+    // Costruttore
+    AdvectionDiffusionSolver1D(const ConfigParser& cfg);
+    
+    // Metodi di configurazione
     void setInitialCondition() override;
     void setBoundaryConditions() override;
     
-    // Resolution methods
+    // Metodi di risoluzione
     void solve() override;
     void step(double dt) override;
     
@@ -39,16 +42,6 @@ public:
     // double getCurrentTime() const override { return t; }
     
 private:
-
-    //Additional parameters for the domain setup
-    int ny;
-    int nx;                         // Grid points
-    double Lx;                       
-    double Ly;                      // Domain lenght
-    double dx;                      
-    double dy;                      // Grid spacing
-    std::vector<double> x;   
-    std::vector<double> y;          // Grid coordinates
     
     // Private methods for calculations
     std::vector<double> computeRHS(const std::vector<double>& u_current) const;
@@ -56,11 +49,12 @@ private:
     double diffusionTerm(const std::vector<double>& u_current, int i) const;
     void applyBoundaryConditions(std::vector<double>& u_vec);
     
-    // Spatial schemes
+    // Schemi spaziali
     double centralDifference(const std::vector<double>& u_current, int i) const;
     double upwindDifference(const std::vector<double>& u_current, int i) const;
     double quickDifference(const std::vector<double>& u_current, int i) const;
 
     // smart pointer for initial condition class
-    std::unique_ptr<IInitialCondition2D> initialCondition;
+    std::unique_ptr<IInitialCondition1D> initialCondition;
 };
+

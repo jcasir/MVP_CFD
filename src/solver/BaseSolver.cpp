@@ -1,4 +1,4 @@
-#include "solver/BaseSolver.h"
+#include "solver/BaseSolver.hpp"
 #include <iostream>
 #include <fstream>
 #include <cmath>

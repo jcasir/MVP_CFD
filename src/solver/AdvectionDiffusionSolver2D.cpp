@@ -1,4 +1,4 @@
-#include "solver/AdvectionDiffusionSolver2D.h"
+#include "solver/AdvectionDiffusionSolver2D.hpp"
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -26,6 +26,7 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
     initialCondition = makeIC2D(m_cfg);
 
     std::ofstream file(mesh_file);
+    
     // Handle the "fencepost problem": write the first element outside the loop
     // to ensure the comma acts only as a separator between elements.    
     file << "x0";

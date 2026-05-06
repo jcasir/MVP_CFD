@@ -1,7 +1,7 @@
 // condizioni_iniziali.h
 #pragma once
-#include "ErrorHandler.h"
-#include "ConfigParser.h"
+#include "ErrorHandler.hpp"
+#include "ConfigParser.hpp"
 #include <iostream>
 #include <cmath>
 #include <numbers> 

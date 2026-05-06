@@ -1,6 +1,6 @@
-#include "solver/AdvectionDiffusionSolver1D.h"
-#include "solver/AdvectionDiffusionSolver2D.h"
-#include "solver/BaseSolver.h"
+#include "solver/AdvectionDiffusionSolver1D.hpp"
+#include "solver/AdvectionDiffusionSolver2D.hpp"
+#include "solver/BaseSolver.hpp"
 #include <iostream>
 #include <cmath>
 

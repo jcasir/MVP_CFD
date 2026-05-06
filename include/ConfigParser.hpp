@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ErrorHandler.h>
+#include <ErrorHandler.hpp>
 #include <string>
 #include <unordered_map>
 #include <map>
