@@ -14,23 +14,22 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
 {
     // Lettura config
 
-    nx               = m_cfg.getInt("GRID_POINTS");
-    output_freq      = m_cfg.getInt("OUTPUT_FREQUENCY");
-    time_iter        = 0;
+    nx                      = m_cfg.getInt("GRID_POINTS");
+    output_freq             = m_cfg.getInt("OUTPUT_FREQUENCY");
+    time_iter               = 0;
 
-    L                = m_cfg.getDouble("DOMAIN_LENGHT");
-    c                = m_cfg.getDouble("ADVECTION_SPEED");
-    D                = m_cfg.getDouble("DIFFUSION_COEFF");
-    bcLeft           = m_cfg.getDouble("BC_LEFT");
-    bcRight          = m_cfg.getDouble("BC_RIGHT");
-    dt               = m_cfg.getDouble("TIME_STEP");
-    tEnd             = m_cfg.getDouble("END_TIME");
-    t                = m_cfg.getDouble("INITIAL_TIME");
+    L                       = m_cfg.getDouble("DOMAIN_LENGHT");
+    c                       = m_cfg.getDouble("ADVECTION_SPEED");
+    D                       = m_cfg.getDouble("DIFFUSION_COEFF");
+    bcLeft                  = m_cfg.getDouble("BC_LEFT");
+    bcRight                 = m_cfg.getDouble("BC_RIGHT");
+    dt                      = m_cfg.getDouble("TIME_STEP");
+    tEnd                    = m_cfg.getDouble("END_TIME");
+    t                       = m_cfg.getDouble("INITIAL_TIME");
 
-    spatialScheme    = m_cfg.getEnum("SPATIAL_SCHEME",spatialSchemeMap);
-    timeScheme       = m_cfg.getEnum("TIME_SCHEME",timeSchemeMap);
-    bcType           = m_cfg.getEnum("BOUNDARY_CONDITIONS",boundaryConditionMap);
-    initialCondition = m_cfg.getEnum("INITIAL_CONDITIONS",initialConditionMap);
+    spatialScheme           = m_cfg.getEnum("SPATIAL_SCHEME",spatialSchemeMap);
+    timeScheme              = m_cfg.getEnum("TIME_SCHEME",timeSchemeMap);
+    bcType                  = m_cfg.getEnum("BOUNDARY_CONDITIONS",boundaryConditionMap);
 
     verbose          = m_cfg.getBool("VERBOSE");
 
