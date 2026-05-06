@@ -30,7 +30,7 @@ public:
     
     // Output
     void saveCurrentTimeStep();
-    void createOutputFile() override;
+    void createOutputFile();
     // void saveToFile(const std::string& filename) const override;
     // void printStats() const override;
     
@@ -42,6 +42,10 @@ public:
     // double getCurrentTime() const override { return t; }
     
 private:
+
+    // Domain parameters
+    int nx;                         // Number of grid points
+    double L;                       // Domain lenght
     
     // Private methods for calculations
     std::vector<double> computeRHS(const std::vector<double>& u_current) const;

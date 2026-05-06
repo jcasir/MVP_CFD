@@ -7,6 +7,8 @@
 
 AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) : BaseSolver(cfg)
 {
+    nx = m_cfg.getInt("GRID_POINTS");
+    L  = m_cfg.getDouble("DOMAIN_LENGHT");
 
     initialCondition = makeIC1D(m_cfg);
 
@@ -42,6 +44,7 @@ AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) 
 
     std::cout << "Advection-Diffusion Solver 1D Initialized" << std::endl;
 
+    createOutputFile();
 }
 
 void AdvectionDiffusionSolver1D::setInitialCondition() {

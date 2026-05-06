@@ -14,11 +14,9 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
 {
     // Lettura config
 
-    nx                      = m_cfg.getInt("GRID_POINTS");
     output_freq             = m_cfg.getInt("OUTPUT_FREQUENCY");
     time_iter               = 0;
 
-    L                       = m_cfg.getDouble("DOMAIN_LENGHT");
     c                       = m_cfg.getDouble("ADVECTION_SPEED");
     D                       = m_cfg.getDouble("DIFFUSION_COEFF");
     bcLeft                  = m_cfg.getDouble("BC_LEFT");
@@ -31,10 +29,10 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
     timeScheme              = m_cfg.getEnum("TIME_SCHEME",timeSchemeMap);
     bcType                  = m_cfg.getEnum("BOUNDARY_CONDITIONS",boundaryConditionMap);
 
-    verbose          = m_cfg.getBool("VERBOSE");
+    verbose                 = m_cfg.getBool("VERBOSE");
 
-    output_file       = m_cfg.getString("OUTPUT_FILE");
-    mesh_file        = m_cfg.getString("MESH_FILE");
+    output_file             = m_cfg.getString("OUTPUT_FILE");
+    mesh_file               = m_cfg.getString("MESH_FILE");
 
 
     std::cout << "Base parameters of the solver initialized" << std::endl;

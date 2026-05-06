@@ -38,8 +38,8 @@ public:
 
 class CannotOpenFile : public GeneralRuntimeError {
 public:
-    CannotOpenFile(const std::string& filename) 
-        : GeneralRuntimeError("Cannot open config file: " + filename) {}
+    CannotOpenFile(const std::string& filename, const std::string& origin = "") 
+        : GeneralRuntimeError("Cannot open " + origin + " file: " + filename) {}
 };
 
 class InvalidInitialCondition : public GeneralRuntimeError {

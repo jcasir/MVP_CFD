@@ -27,7 +27,7 @@ public:
     virtual void step(double dt) = 0;
     
     // Output
-    virtual void createOutputFile() = 0;
+    // virtual void createOutputFile() = 0;
     // virtual void saveToFile(const std::string& filename) const = 0;
     // virtual void printStats() const = 0;
     
@@ -42,9 +42,7 @@ protected:
     //config
     const ConfigParser& m_cfg;
 
-    // Parametri del dominio
-    int nx;                         // Numero di punti griglia
-    double L;                       // Lunghezza dominio
+    // Domain parameters
     double dx;                      // Spaziatura griglia
     std::vector<double> x;          // Coordinate griglia
     std::string config_file;        // Config file
