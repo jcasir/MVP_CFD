@@ -67,6 +67,7 @@ run: all
 clean:
 	rm -rf obj/
 	rm -f solver1d solver1d_debug solver1d_asan
+	rm -f results/*.csv
 
 cleanall: clean
 	rm -f *.dat *.txt
