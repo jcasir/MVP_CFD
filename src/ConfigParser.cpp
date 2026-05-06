@@ -11,7 +11,7 @@ ConfigParser::ConfigParser(const std::string& filename) {
 void ConfigParser::parse(const std::string& filename) {
     std::ifstream file(filename);
     if (!file.is_open())
-        throw std::runtime_error("Cannot open config file: " + filename);
+        throw CannotOpenFile(filename);
 
     std::string line;
     while (std::getline(file, line)) {
@@ -37,13 +37,13 @@ void ConfigParser::parse(const std::string& filename) {
 
 std::string ConfigParser::getString(const std::string& key) const {
     auto it = data_.find(key);
-    if (it == data_.end()) throw std::runtime_error("Key: " + key + " not found in the config file."); 
+    if (it == data_.end()) throw KeyNotFound(key);
     return it->second;
 }
 
 int ConfigParser::getInt(const std::string& key) const {
     auto it = data_.find(key);
-    if (it == data_.end()) throw std::runtime_error("Key: " + key + " not found in the config file."); 
+    if (it == data_.end()) throw KeyNotFound(key);
     try { return std::stoi(it->second); }
     catch (...) { throw std::runtime_error("Invalid int for key: " + key); }
 }
@@ -55,7 +55,7 @@ double ConfigParser::parseDouble(const std::string& key, const std::string& valu
 
 double ConfigParser::getDouble(const std::string& key) const {
     auto it = data_.find(key);
-    if (it == data_.end()) throw std::runtime_error("Key: " + key + " not found in the config file.");
+    if (it == data_.end()) throw KeyNotFound(key);
     return parseDouble(key, it->second);
 }
 

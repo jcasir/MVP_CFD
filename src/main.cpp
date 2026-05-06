@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
         //Solve
         solver->solve();
     }
-    catch (const GeneralError& e){
+    catch (const GeneralRuntimeError& e){
         std::cerr << "\n[FATAL ERROR] " << e.what() << '\n';
         return EXIT_FAILURE; 
     }

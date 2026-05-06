@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ErrorHandler.h>
 #include <string>
 #include <unordered_map>
 #include <map>
@@ -21,7 +22,7 @@ public:
         const std::string& val = getString(key);
         auto it = mapping.find(val);
         if (it == mapping.end())
-            throw std::runtime_error("Invalid value '" + val + "' for key: " + key);
+            throw InvalidValueForKey(val,key);
         return it->second;
     }
 
