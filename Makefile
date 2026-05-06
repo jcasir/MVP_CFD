@@ -22,7 +22,7 @@ else ifeq ($(BUILD),asan)
   OBJDIR    = obj/asan
   CXXFLAGS  = $(STANDARD) $(WARN) -g -O1 -fsanitize=address,undefined -Iinclude
   LDFLAGS   = -fsanitize=address,undefined
-  EXECSUFFIX = _asan [cite: 2]
+  EXECSUFFIX = _asan
 else
   OBJDIR    = obj/release
   CXXFLAGS  = $(STANDARD) $(WARN) -O3 -march=native -Iinclude
@@ -33,7 +33,7 @@ EXECUTABLE = solver1d$(EXECSUFFIX)
 CONFIG     = config.cfg
 
 # ── Objects and automatic dependencies ─────────────────────────────────────── 
-OBJECTS  = $(addprefix $(OBJDIR)/, $(SOURCES:.cpp=.o))
+OBJECTS = $(patsubst %.cpp, $(OBJDIR)/%.o, $(SOURCES))
 DEPFILES = $(OBJECTS:.o=.d)
 
 # ── Main Target ──────────────────────────────────────────────────────────────
