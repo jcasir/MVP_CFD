@@ -20,14 +20,7 @@ enum class BoundaryCondition {
     PERIODIC        // Condizioni periodiche
 };
 
-enum class InitialCondition {
-    GAUSSIAN,      // Bell-shaped smooth curve
-    SQUARE_WAVE,        // Alternating high-low signal
-    SINUSOIDAL,        // Smooth periodic oscillation
-    HAT_FUNCTION
-};
-
-//enum maps initialisation
+//enum maps initialization
 inline const std::map<std::string, SpatialScheme> spatialSchemeMap = {
     {"CENTRAL", SpatialScheme::CENTRAL},
     {"UPWIND",  SpatialScheme::UPWIND},
@@ -41,9 +34,4 @@ inline const std::map<std::string, BoundaryCondition> boundaryConditionMap = {
     {"DIRICHLET", BoundaryCondition::DIRICHLET},
     {"NEUMANN",  BoundaryCondition::NEUMANN},
     {"PERIODIC",   BoundaryCondition::PERIODIC}
-};
-inline const std::map<std::string, InitialCondition> initialConditionMap = {
-    {"GAUSSIAN", InitialCondition::GAUSSIAN},
-    {"SQUARE_WAVE",  InitialCondition::SQUARE_WAVE},
-    {"SINUSOIDAL",   InitialCondition::SINUSOIDAL}
 };

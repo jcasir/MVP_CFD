@@ -14,7 +14,7 @@ class BaseSolver {
 public:
     
     // Costruttore
-    BaseSolver(const ConfigParser& cconfigfg);
+    BaseSolver(const ConfigParser& config);
 
     virtual ~BaseSolver() = default;
     
@@ -67,9 +67,6 @@ protected:
     // Boundary Conditions
     BoundaryCondition bcType;
     double bcLeft, bcRight;
-
-    //Initial conditions
-    InitialCondition initialCondition;
 
     //output flag for debug
     bool verbose;

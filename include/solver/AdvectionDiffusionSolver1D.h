@@ -4,6 +4,7 @@
 #include "ConfigParser.h"
 #include "InitialConditions.h"
 #include "BaseSolver.h"
+#include "ErrorHandler.h"
 #include <stdexcept>
 #include <vector>
 #include <string>
@@ -52,5 +53,8 @@ private:
     double centralDifference(const std::vector<double>& u_current, int i) const;
     double upwindDifference(const std::vector<double>& u_current, int i) const;
     double quickDifference(const std::vector<double>& u_current, int i) const;
+
+    // smart pointer for initial condition class
+    std::unique_ptr<IInitialCondition1D> initialCondition;
 };
 

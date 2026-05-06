@@ -8,6 +8,8 @@
 AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) : BaseSolver(cfg)
 {
 
+    initialCondition = makeIC1D(m_cfg);
+
     // Grid initialization
     dx = L / (nx - 1);
     x.resize(nx);
@@ -44,10 +46,7 @@ AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) 
 
 void AdvectionDiffusionSolver1D::setInitialCondition() {
 
-    std::function<double(double)> ic = retriveInitialConditionFunction(initialCondition);
-    for (int i = 0; i < nx; ++i) {
-        u[i] = ic(x[i]);
-    }
+    initialCondition->setIC(u,x);
     std::cout << "Initial condition set." << std::endl;
 }
 

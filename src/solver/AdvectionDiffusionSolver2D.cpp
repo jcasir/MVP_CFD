@@ -23,6 +23,8 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
 
     u.resize(nx * ny, 0.0);
 
+    initialCondition = makeIC2D(m_cfg);
+
     std::ofstream file(mesh_file);
     // Handle the "fencepost problem": write the first element outside the loop
     // to ensure the comma acts only as a separator between elements.    
@@ -61,10 +63,7 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
 
 void AdvectionDiffusionSolver2D::setInitialCondition() {
 
-    std::function<double(double)> ic = retriveInitialConditionFunction(initialCondition);
-    for (int i = 0; i < nx; ++i) {
-        u[i] = ic(x[i]);
-    }
+    initialCondition->setIC(u,x,y);
     std::cout << "Condizione iniziale impostata." << std::endl;
 }
 
