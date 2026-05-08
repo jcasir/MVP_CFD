@@ -17,7 +17,6 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
     output_freq             = m_cfg.getInt("OUTPUT_FREQUENCY");
     time_iter               = 0;
 
-    c                       = m_cfg.getDouble("ADVECTION_SPEED");
     D                       = m_cfg.getDouble("DIFFUSION_COEFF");
     bcLeft                  = m_cfg.getDouble("BC_LEFT");
     bcRight                 = m_cfg.getDouble("BC_RIGHT");
@@ -32,6 +31,7 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
     verbose                 = m_cfg.getBool("VERBOSE");
 
     output_file             = m_cfg.getString("OUTPUT_FILE");
+    output_dir              = m_cfg.getString("OUTPUT_DIR");
     mesh_file               = m_cfg.getString("MESH_FILE");
 
 

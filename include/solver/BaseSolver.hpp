@@ -27,6 +27,7 @@ public:
     virtual void step(double dt) = 0;
     
     // Output
+    virtual void finalOutput() = 0;
     // virtual void createOutputFile() = 0;
     // virtual void saveToFile(const std::string& filename) const = 0;
     // virtual void printStats() const = 0;
@@ -50,8 +51,7 @@ protected:
     double tEnd;                    // End time
     int time_iter;
     
-    // Parametri fisici
-    double c;                       // Velocità avvezione
+    // Physical parameters
     double D;                       // Coefficiente diffusione
     
     // Soluzione
@@ -71,6 +71,7 @@ protected:
 
     //output file
     std::string output_file;
+    std::string output_dir;
     std::string mesh_file;
     int output_freq;
 

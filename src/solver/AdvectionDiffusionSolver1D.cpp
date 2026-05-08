@@ -10,6 +10,8 @@ AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) 
     nx = m_cfg.getInt("GRID_POINTS");
     L  = m_cfg.getDouble("DOMAIN_LENGHT");
 
+    c  = m_cfg.getDouble("ADVECTION_SPEED");
+
     initialCondition = makeIC1D(m_cfg);
 
     // Grid initialization
@@ -276,6 +278,10 @@ void AdvectionDiffusionSolver1D::createOutputFile(){
         file << ",u" << i;
     }
     file.close();
+}
+
+void AdvectionDiffusionSolver1D::finalOutput(){
+    //TBI
 }
 
 // void AdvectionDiffusionSolver1D::saveToFile(const std::string& filename) const {

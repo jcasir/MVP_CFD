@@ -31,6 +31,7 @@ public:
     // Output
     void saveCurrentTimeStep();
     void createOutputFile();
+    void finalOutput() override;
     // void saveToFile(const std::string& filename) const override;
     // void printStats() const override;
     
@@ -46,6 +47,9 @@ private:
     // Domain parameters
     int nx;                         // Number of grid points
     double L;                       // Domain lenght
+
+    // Physical parameters
+    double c;                       // Advection speed
     
     // Private methods for calculations
     std::vector<double> computeRHS(const std::vector<double>& u_current) const;

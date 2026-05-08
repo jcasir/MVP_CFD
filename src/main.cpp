@@ -49,6 +49,9 @@ int main(int argc, char* argv[]) {
         
         //Solve
         solver->solve();
+
+        //save the pwd file
+        solver->finalOutput();
     }
     catch (const GeneralRuntimeError& e){
         std::cerr << "\n[FATAL ERROR] " << e.what() << '\n';
