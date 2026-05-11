@@ -1,0 +1,129 @@
+#pragma once
+
+#include "MathSettings.hpp"
+#include "ConfigParser.hpp"
+#include "InitialConditions.hpp"
+#include "BaseSolver.hpp"
+#include "vtuWriter.hpp"
+#include <stdexcept>
+#include <vector>
+#include <string>
+#include <functional>
+
+/**
+ * 2D solver for the Burgers' equations:
+ * ∂u/∂t + (u·∇)u = D·∇²u
+ */
+
+class Burgers2D : public BaseSolver{
+public:
+	Burgers2D(const ConfigParser& config);
+
+    // Configuration methods
+    void setInitialCondition() override;
+    void setBoundaryConditions() override;
+    
+    // Resolution methods
+    void solve() override;
+    void step(double dt) override;
+
+    //Output
+    void finalOutput() override;
+    
+    // Getters
+    double getCFL() const override;
+    double getDiffusionNumber() const override;
+
+private:
+    //Additional parameters for the domain setup
+    int ny;                         // Grid points
+    int nx;                         
+    double Lx;                      // Domain lenght
+    double Ly;                      
+    double dx;                      // Grid spacing
+    double dy;                     
+    std::vector<double> x;          // Grid coordinates
+    std::vector<double> y;          
+    double bcTop;                   // Boundary conditions exclusive to 2D problem
+    double bcBottom;                     
+
+   	// Solution
+	// std::vector<double> u;  // x-component of velocity field. Declared in BaseSolver.
+	std::vector<double> v;     // y-component of velocity field.
+
+    // intermediate solution for rk4
+    //std::vector<double> u_temp;  // Declared in BaseSolver.
+    std::vector<double> v_temp;
+
+    // k functions for rk4
+    std::vector<double> k1_x, k2_x, k3_x, k4_x;
+	std::vector<double> k1_y, k2_y, k3_y, k4_y;
+
+    //Output class handler
+    PVDWriter pvdWriter;
+    
+    // Private methods for calculations
+	std::vector<double> computeRHS(const std::vector<double>& field,
+                                const std::vector<double>& u_curr,
+                                const std::vector<double>& v_curr) const;
+    void applyBoundaryConditions(std::vector<double>& u_vec);
+    
+    // Spatial schemes
+    template<typename FuncX, typename FuncY>
+    double advectionTerm(FuncX Ux, FuncY Uy, double uij, double vel_x, double vel_y) const
+    {
+        if (spatialScheme == SpatialScheme::CENTRAL) {
+            return centralDifference(Ux, Uy, vel_x, vel_y);
+        } else if (spatialScheme == SpatialScheme::UPWIND) {
+            return upwindDifference(Ux, Uy, uij, vel_x, vel_y);
+        } else { // QUICK
+            return quickDifference(Ux, Uy, uij, vel_x, vel_y);
+        }
+    }
+
+    template<typename FuncX, typename FuncY>
+    double diffusionTerm(FuncX Ux, FuncY Uy, double uij) const
+    {
+        // Central differencies of the second order for the diffusion.
+        return D * ((Ux(+1) - 2.0*uij + Ux(-1)) / (dx * dx)
+                  + (Uy(+1) - 2.0*uij + Uy(-1)) / (dy * dy));
+
+    }
+
+    template<typename FuncX, typename FuncY>
+    double centralDifference(FuncX Ux, FuncY Uy, double vel_x, double vel_y) const
+    {
+        return vel_x * (Ux(+1) - Ux(-1)) / (2.0 * dx) 
+             + vel_y * (Uy(+1) - Uy(-1)) / (2.0 * dy);
+    }
+
+    template<typename FuncX, typename FuncY>
+    double upwindDifference(FuncX Ux, FuncY Uy, double uij, double vel_x, double vel_y) const
+    {
+        double dux = (vel_x >= 0) ? (uij - Ux(-1)) / dx : (Ux(+1) - uij) / dx;
+        double duy = (vel_y >= 0) ? (uij - Uy(-1)) / dy : (Uy(+1) - uij) / dy;
+        return vel_x * dux + vel_y * duy;
+    }
+
+    template<typename FuncX, typename FuncY>
+    double quickDifference(FuncX Ux, FuncY Uy, double uij, double vel_x, double vel_y) const
+    {
+        // QUICK Scheme (Quadratic Upstream Interpolation for Convective Kinematics)
+
+        double dux = (vel_x >= 0)
+            ? (-Ux(-2) + 8*Ux(-1) - 8*Ux(+1) + uij)   / (12.0 * dx)
+            : ( -uij   + 8*Ux(+1) - 8*Ux(-1) + Ux(+2)) / (12.0 * dx);
+
+        double duy = (vel_y >= 0)
+            ? (-Uy(-2) + 8*Uy(-1) - 8*Uy(+1) + uij)   / (12.0 * dy)
+            : ( -uij   + 8*Uy(+1) - 8*Uy(-1) + Uy(+2)) / (12.0 * dy);
+
+        return vel_x * dux + vel_y * duy;
+    }
+
+    //Indexing for 1D array
+    int idx(int i,int j) const;
+
+    // smart pointer for initial condition class
+    std::unique_ptr<IInitialCondition2D> initialCondition;
+};

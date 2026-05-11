@@ -1,6 +1,7 @@
 #include "solver/AdvectionDiffusionSolver1D.hpp"
 #include "solver/AdvectionDiffusionSolver2D.hpp"
 #include "solver/BaseSolver.hpp"
+#include "solver/Burgers2D.hpp"
 #include <iostream>
 #include <cmath>
 
@@ -27,9 +28,12 @@ int main(int argc, char* argv[]) {
 
     try{
         std::unique_ptr<BaseSolver> solver;
-        if (solver_type == "ADVECTION_DIFFUSION_2D") {
+        if (solver_type == "BURGERS_2D") {
             solver = std::make_unique<AdvectionDiffusionSolver2D>(cfg);
         } 
+        else if (solver_type == "ADVECTION_DIFFUSION_2D") {
+            solver = std::make_unique<AdvectionDiffusionSolver1D>(cfg);
+        }
         else if (solver_type == "ADVECTION_DIFFUSION_1D") {
             solver = std::make_unique<AdvectionDiffusionSolver1D>(cfg);
         }
