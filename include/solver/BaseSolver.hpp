@@ -44,19 +44,22 @@ protected:
     const ConfigParser& m_cfg;
 
     // Domain parameters
-    double dx;                      // Spaziatura griglia
-    std::vector<double> x;          // Coordinate griglia
+    double dx;                      // Grid spacing
+    std::vector<double> x;          // Grid coordinates
     std::string config_file;        // Config file
     double dt;                      // Time step
     double tEnd;                    // End time
     int time_iter;
     
     // Physical parameters
-    double D;                       // Coefficiente diffusione
+    double D;                       // Diffusion coefficient
     
-    // Soluzione
-    std::vector<double> u;          // Soluzione corrente
-    double t;                       // Tempo corrente
+    // Solution
+    std::vector<double> u;          // Current solution
+    double t;                       // Current time
+
+    // intermediate solution for rk4
+    std::vector<double> u_temp;          // Current solution
     
     // Numerical schemes
     SpatialScheme spatialScheme;

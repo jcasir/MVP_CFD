@@ -29,6 +29,7 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
     y.resize(ny);
 
     u.resize(nx * ny, 0.0);
+    u_temp.resize(nx * ny, 0.0);
 
     initialCondition = makeIC2D(m_cfg);
 
@@ -130,7 +131,6 @@ void AdvectionDiffusionSolver2D::step(double dt) {
         // Runge-Kutta 4° order
         std::vector<double> k1 = computeRHS(u);
         
-        std::vector<double> u_temp(nx * ny);
         for (int i = 0; i < nx; ++i) {
             for (int j = 0; j < ny; ++j){
                 u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt * k1[idx(i,j)];

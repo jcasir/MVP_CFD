@@ -51,11 +51,11 @@ private:
 	// std::vector<double> u;  // x-component of velocity field. Declared in BaseSolver.
 	std::vector<double> v;     // y-component of velocity field.
 
-    // intermediate solution for rk4
+    // Intermediate state vectors for RK4
     //std::vector<double> u_temp;  // Declared in BaseSolver.
     std::vector<double> v_temp;
 
-    // k functions for rk4
+    // Intermediate RK4 stages 
     std::vector<double> k1_x, k2_x, k3_x, k4_x;
 	std::vector<double> k1_y, k2_y, k3_y, k4_y;
 

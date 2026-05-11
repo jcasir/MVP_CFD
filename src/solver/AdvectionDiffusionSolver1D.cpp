@@ -19,6 +19,8 @@ AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) 
     x.resize(nx);
     u.resize(nx, 0.0);
 
+    u_temp.resize(nx, 0.0);
+
     // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
     checkStability();
 
@@ -105,7 +107,6 @@ void AdvectionDiffusionSolver1D::step(double dt) {
         // 4th order Runge-Kutta
         std::vector<double> k1 = computeRHS(u);
         
-        std::vector<double> u_temp(nx);
         for (int i = 0; i < nx; ++i) {
             u_temp[i] = u[i] + 0.5 * dt * k1[i];
         }
