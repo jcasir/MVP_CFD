@@ -55,7 +55,7 @@ void BaseSolver::checkStability() const {
     bool flagExplicit = getExplicitSchemeFlag();
 
     if (flagExplicit && cfl > 1){
-        throw InitialStabilityException("CFL",cfl,1.0); //last argument is the limit for this specific stability check
+        throw StabilityException("CFL",cfl,1.0); //last argument is the limit for this specific stability check
     }
     else {
         std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << " Time scheme" << '\n';
@@ -65,7 +65,7 @@ void BaseSolver::checkStability() const {
     std::cout << "Verifying diffusion stability" << std::endl;
 
     if (flagExplicit && diff > 0.5){
-        throw InitialStabilityException("Diffusion number",diff,0.5); //last argument is the limit for this specific stability check
+        throw StabilityException("Diffusion number",diff,0.5); //last argument is the limit for this specific stability check
     }
     else {
         std::cout << ( (flagExplicit) ? "Explicit" : "Implicit" ) << " Time scheme" << '\n';

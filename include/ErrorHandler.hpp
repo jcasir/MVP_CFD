@@ -11,9 +11,9 @@ public:
         : std::runtime_error(msg) {}
 };
 
-class InitialStabilityException : public GeneralRuntimeError {
+class StabilityException : public GeneralRuntimeError {
 public:
-    InitialStabilityException(const std::string& msg, double v, double limit) 
+    StabilityException(const std::string& msg, double v, double limit) 
         : GeneralRuntimeError("Error: " + msg + " = " + std::to_string(v) + '\n'
             + "Limit for Explicit Schemes = " + std::to_string(limit)) {}
 };
