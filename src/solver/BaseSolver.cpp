@@ -6,13 +6,8 @@
 #include <iomanip>
 
 BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
-    // int nx, double L, double c, double D,
-    // SpatialScheme spatialScheme, TimeScheme timeScheme)
-    // : nx(nx), L(L), c(c), D(D), 
-    //   spatialScheme(spatialScheme), timeScheme(timeScheme),
-    //   t(0.0), bcType(BoundaryCondition::DIRICHLET), bcLeft(0.0), bcRight(0.0)
 {
-    // Lettura config
+    // Read the config file
 
     output_freq             = m_cfg.getInt("OUTPUT_FREQUENCY");
     time_iter               = 0;
@@ -32,7 +27,6 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
 
     output_file             = m_cfg.getString("OUTPUT_FILE");
     output_dir              = m_cfg.getString("OUTPUT_DIR");
-    mesh_file               = m_cfg.getString("MESH_FILE");
 
 
     std::cout << "Base parameters of the solver initialized" << std::endl;

@@ -19,8 +19,9 @@ Burgers2D::Burgers2D(const ConfigParser& config)
 
 
     // Grid initialization
-    dx = Lx / (nx - 1);
-    dy = Ly / (ny - 1);
+    //Non-overlapping grid for PERIODIC (domain [0,L)), overlapping for DIRICHLET/NEUMANN (nodes at exact boundaries)
+    dx = (bcType == BoundaryCondition::PERIODIC) ? Lx / nx : Lx / (nx - 1);
+    dy = (bcType == BoundaryCondition::PERIODIC) ? Ly / ny : Ly / (ny - 1);
 
     x.resize(nx);
     y.resize(ny);
@@ -45,9 +46,6 @@ Burgers2D::Burgers2D(const ConfigParser& config)
 
     initialCondition = makeIC2D(m_cfg);
 
-    // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
-    checkStability();
-
     if (verbose) std::cout << "Printing mesh grid:" << '\n' << '\n';
     
     for (int i = 0; i < nx; ++i) {
@@ -60,8 +58,16 @@ Burgers2D::Burgers2D(const ConfigParser& config)
         if (verbose) std::cout << "coordinate y" << i << ": "<< y[i] << '\n';
     }
 
-    std::cout << "Advection-Diffusion Solver 2D Initialised" << std::endl;
+    std::cout << "Burgers Solver 2D Initialised" << std::endl;
 
+}
+
+Burgers2D::~Burgers2D() {
+    try {
+        pvdWriter.write();
+    } catch (const std::exception& e) {
+        std::cerr << "ERROR writing PVD: " << e.what() << "\n";
+    }
 }
 
 int Burgers2D::idx(int i,int j) const{
@@ -73,6 +79,9 @@ void Burgers2D::setInitialCondition() {
     initialCondition->setIC(u,x,y);
     initialCondition->setIC(v,x,y);
     std::cout << "Condizione iniziale impostata." << std::endl;
+
+    // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
+    checkStability();
 
     //print initial condition
     // VTUWriter wants the number of cells so it must be given (nx - 1) because nx is the number of points
@@ -123,7 +132,7 @@ void Burgers2D::solve() {
             VTUWriter outputWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
             outputWriter.addVector("u",u,v);
             outputWriter.write();
-            pvdWriter.addStep(dt_actual*nSteps,outputFile);
+            pvdWriter.addStep(t,outputFile);
         }
     }
     
@@ -206,8 +215,8 @@ std::vector<double> Burgers2D::computeRHS(
 {
     std::vector<double> rhs(nx * ny, 0.0);
     
-    // Calcola RHS per i punti interni
-    int start = (bcType == BoundaryCondition::PERIODIC) ? 0 : 1;
+    // Computes RHS for the internal points
+    int start = (bcType == BoundaryCondition::PERIODIC) ? 0 : 1; 
     int end_x = (bcType == BoundaryCondition::PERIODIC) ? nx : nx - 1;
     int end_y = (bcType == BoundaryCondition::PERIODIC) ? ny : ny - 1;
     
@@ -261,7 +270,6 @@ void Burgers2D::applyBoundaryConditions(std::vector<double>& u_vec) {
             u_vec[idx(nx - 1,j)] = bcRight;
         }
     } 
-
     else if (bcType == BoundaryCondition::NEUMANN) {
 
         for (int i = 0; i < nx; ++i) {
@@ -272,7 +280,7 @@ void Burgers2D::applyBoundaryConditions(std::vector<double>& u_vec) {
             u_vec[idx(0, j)] = u_vec[idx(1, j)] - bcLeft * dx;
             u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + bcRight * dx;
         }
-    } 
+    }
 }
 
 double Burgers2D::getCFL() const {
@@ -287,10 +295,6 @@ double Burgers2D::getDiffusionNumber() const {
     return D * dt * (1.0/(dx*dx) + 1.0/(dy*dy)); // Diffusion number 
 }
 
-void Burgers2D::finalOutput(){
-    pvdWriter.write();
-}
-
 /*
     Ux(di) and Uy(dj) return neighbor values handling all boundary cases via ghost cells.
     If inside the domain they return the value directly (e.g. Ux(+1) returns u[idx(i+1,j)]).
@@ -303,7 +307,7 @@ void Burgers2D::finalOutput(){
                    es. ni = nx => (nx + nx)/nx = 0
                        ni = nx --------------->  0
 
-    Ghost points for DIRICLET BCs
+    Ghost points for DIRICHLET BCs
     Bc_Diriclet = (u(i+1) + u(i-1)) / 2
 
     i = 0 => bcLeft         u[-1] = 2*bcLeft - u[1] 

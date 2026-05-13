@@ -5,26 +5,33 @@
 #include <algorithm>
 #include <iomanip>
 
-AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) : BaseSolver(cfg)
+AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) : BaseSolver(cfg), outputWriter(cfg)
 {
-    nx = m_cfg.getInt("GRID_POINTS");
-    L  = m_cfg.getDouble("DOMAIN_LENGHT");
-
-    c  = m_cfg.getDouble("ADVECTION_SPEED");
+    nx          = m_cfg.getInt("GRID_POINTS");
+    L           = m_cfg.getDouble("DOMAIN_LENGHT");
+    c           = m_cfg.getDouble("ADVECTION_SPEED");
+    mesh_file   = m_cfg.getString("MESH_FILE");
 
     initialCondition = makeIC1D(m_cfg);
 
     // Grid initialization
-    dx = L / (nx - 1);
+    dx = (bcType == BoundaryCondition::PERIODIC) ? L / nx : L / (nx - 1);
     x.resize(nx);
     u.resize(nx, 0.0);
 
-    u_temp.resize(nx, 0.0);
+    if (timeScheme == TimeScheme::RK4){
+        u_temp.resize(nx, 0.0);
 
-    // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
-    checkStability();
+        k1.resize(nx, 0.0);
+        k2.resize(nx, 0.0);
+        k3.resize(nx, 0.0);
+        k4.resize(nx, 0.0);
+    }
 
-    std::ofstream file(mesh_file);
+    std::ofstream file(output_dir + mesh_file);
+    if (!file){
+        throw CannotOpenFile(output_dir + mesh_file,"mesh");
+    }
     // Handle the "fencepost problem": write the first element outside the loop
     // to ensure the comma acts only as a separator between elements.    
     file << "x0";
@@ -47,14 +54,15 @@ AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) 
     file.close();
 
     std::cout << "Advection-Diffusion Solver 1D Initialized" << std::endl;
-
-    createOutputFile();
 }
 
 void AdvectionDiffusionSolver1D::setInitialCondition() {
 
     initialCondition->setIC(u,x);
     std::cout << "Initial condition set." << std::endl;
+
+    // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
+    checkStability();
 }
 
 void AdvectionDiffusionSolver1D::setBoundaryConditions()
@@ -87,6 +95,9 @@ void AdvectionDiffusionSolver1D::solve() {
         if (nSteps % 100 == 0) {
             std::cout << "  Step " << nSteps << ", t = " << t << std::endl;
         }
+        if (nSteps % output_freq == 0){
+            outputWriter.saveCurrentTimeStep(nSteps,u);
+        }
     }
     
     std::cout << "Resolution completed after " << nSteps << " time steps." << std::endl;
@@ -105,25 +116,25 @@ void AdvectionDiffusionSolver1D::step(double dt) {
         
     } else if (timeScheme == TimeScheme::RK4) {
         // 4th order Runge-Kutta
-        std::vector<double> k1 = computeRHS(u);
+        k1 = computeRHS(u);
         
         for (int i = 0; i < nx; ++i) {
             u_temp[i] = u[i] + 0.5 * dt * k1[i];
         }
         applyBoundaryConditions(u_temp);
-        std::vector<double> k2 = computeRHS(u_temp);
+        k2 = computeRHS(u_temp);
         
         for (int i = 0; i < nx; ++i) {
             u_temp[i] = u[i] + 0.5 * dt * k2[i];
         }
         applyBoundaryConditions(u_temp);
-        std::vector<double> k3 = computeRHS(u_temp);
+        k3 = computeRHS(u_temp);
         
         for (int i = 0; i < nx; ++i) {
             u_temp[i] = u[i] + dt * k3[i];
         }
         applyBoundaryConditions(u_temp);
-        std::vector<double> k4 = computeRHS(u_temp);
+        k4 = computeRHS(u_temp);
         
         for (int i = 0; i < nx; ++i) {
             u[i] += (dt / 6.0) * (k1[i] + 2.0*k2[i] + 2.0*k3[i] + k4[i]);
@@ -134,8 +145,6 @@ void AdvectionDiffusionSolver1D::step(double dt) {
     
     t += dt;
     time_iter += 1;
-
-    if (time_iter % output_freq == 0) saveCurrentTimeStep();
 }
 
 std::vector<double> AdvectionDiffusionSolver1D::computeRHS(
@@ -149,78 +158,26 @@ std::vector<double> AdvectionDiffusionSolver1D::computeRHS(
     
     // Calculate RHS for internal points
     for (int i = start; i < end; ++i) {
+        // Ux(di) returns neighbor values handling all boundary cases via ghost cells.
+        // See end of file for derivation details.
+        auto Ux = [&](int di) -> double {
+            int ni = i + di;
+            if (ni >= 0 && ni < nx) return u_current[ni];
+            if (bcType == BoundaryCondition::PERIODIC)
+                return u_current[(ni + nx) % nx];
+            if (bcType == BoundaryCondition::DIRICHLET)
+                return (ni < 0) ? 2*bcLeft  - u_current[-ni]
+                                : 2*bcRight - u_current[2*(nx-1) - ni];
+            // NEUMANN
+            return (ni < 0) ? u_current[-ni]           + ni * 2 * bcLeft  * dx
+                            : u_current[2*(nx-1) - ni] + (ni - (nx-1)) * 2 * bcRight * dx;
+        };
+        const double ui = u_current[i];
         // RHS = -c * ∂u/∂x + D * ∂²u/∂x²
-        rhs[i] = -advectionTerm(u_current, i) + diffusionTerm(u_current, i);
+        rhs[i] = -advectionTerm(Ux, ui) + diffusionTerm(Ux, ui);
     }
     
     return rhs;
-}
-
-double AdvectionDiffusionSolver1D::advectionTerm(
-    const std::vector<double>& u_current, int i) const
-{
-    if (spatialScheme == SpatialScheme::CENTRAL) {
-        return c * centralDifference(u_current, i);
-    } else if (spatialScheme == SpatialScheme::UPWIND) {
-        return c * upwindDifference(u_current, i);
-    } else { // QUICK
-        return c * quickDifference(u_current, i);
-    }
-}
-
-double AdvectionDiffusionSolver1D::diffusionTerm(
-    const std::vector<double>& u_current, int i) const
-{
-    // Second-order central differences for diffusion
-    int im1 = (i == 0 && bcType == BoundaryCondition::PERIODIC) ? nx - 1 : i - 1;
-    int ip1 = (i == nx - 1 && bcType == BoundaryCondition::PERIODIC) ? 0 : i + 1;
-    
-    return D * (u_current[ip1] - 2.0*u_current[i] + u_current[im1]) / (dx * dx);
-}
-
-double AdvectionDiffusionSolver1D::centralDifference(
-    const std::vector<double>& u_current, int i) const
-{
-    int im1 = (i == 0 && bcType == BoundaryCondition::PERIODIC) ? nx - 1 : i - 1;
-    int ip1 = (i == nx - 1 && bcType == BoundaryCondition::PERIODIC) ? 0 : i + 1;
-    
-    return (u_current[ip1] - u_current[im1]) / (2.0 * dx);
-}
-
-double AdvectionDiffusionSolver1D::upwindDifference(
-    const std::vector<double>& u_current, int i) const
-{
-    if (c > 0) {
-        // Upwind in negative direction
-        int im1 = (i == 0 && bcType == BoundaryCondition::PERIODIC) ? nx - 1 : i - 1;
-        return (u_current[i] - u_current[im1]) / dx;
-    } else {
-        // Upwind in positive direction
-        int ip1 = (i == nx - 1 && bcType == BoundaryCondition::PERIODIC) ? 0 : i + 1;
-        return (u_current[ip1] - u_current[i]) / dx;
-    }
-}
-
-double AdvectionDiffusionSolver1D::quickDifference(
-    const std::vector<double>& u_current, int i) const
-{
-    // QUICK Scheme (QUadratic Upstream Interpolation for Convective Kinematics)
-    // Requires 3 upstream points
-    
-    if (c > 0) {
-        int im1 = (i == 0 && bcType == BoundaryCondition::PERIODIC) ? nx - 1 : std::max(0, i - 1);
-        int im2 = (im1 == 0 && bcType == BoundaryCondition::PERIODIC) ? nx - 1 : std::max(0, im1 - 1);
-        int ip1 = (i == nx - 1 && bcType == BoundaryCondition::PERIODIC) ? 0 : std::min(nx - 1, i + 1);
-        
-        // Quadratic interpolation
-        return (-u_current[im2] + 8.0*u_current[ip1] - 8.0*u_current[im1] + u_current[i]) / (12.0 * dx);
-    } else {
-        int ip1 = (i == nx - 1 && bcType == BoundaryCondition::PERIODIC) ? 0 : std::min(nx - 1, i + 1);
-        int ip2 = (ip1 == nx - 1 && bcType == BoundaryCondition::PERIODIC) ? 0 : std::min(nx - 1, ip1 + 1);
-        int im1 = (i == 0 && bcType == BoundaryCondition::PERIODIC) ? nx - 1 : std::max(0, i - 1);
-        
-        return (-u_current[i] + 8.0*u_current[ip1] - 8.0*u_current[im1] + u_current[ip2]) / (12.0 * dx);
-    }
 }
 
 void AdvectionDiffusionSolver1D::applyBoundaryConditions(std::vector<double>& u_vec) {
@@ -233,14 +190,7 @@ void AdvectionDiffusionSolver1D::applyBoundaryConditions(std::vector<double>& u_
         u_vec[0] = u_vec[1] - bcLeft * dx;
         // du/dx = bcRight at the right boundary
         u_vec[nx - 1] = u_vec[nx - 2] + bcRight * dx;
-        
-    } else if (bcType == BoundaryCondition::PERIODIC) {
-        // Periodic conditions are already handled via indices
-        // Forcing equality here for numerical safety
-        double avg = 0.5 * (u_vec[0] + u_vec[nx - 1]);
-        u_vec[0] = avg;
-        u_vec[nx - 1] = avg;
-    }
+    } 
 }
 
 double AdvectionDiffusionSolver1D::getCFL() const {
@@ -251,69 +201,44 @@ double AdvectionDiffusionSolver1D::getDiffusionNumber() const {
     return (D * dt) / (dx * dx);  // Diffusion number 
 }
 
-void AdvectionDiffusionSolver1D::saveCurrentTimeStep() {
-    std::ofstream file(output_file, std::ios::app);
-    if (!file){
-        std::cerr << "Error: impossible to open file " << output_file << std::endl;
-        return;
-    }
-    file << '\n';
+/*
+    Ux(di) return neighbor values handling all boundary cases via ghost cells.
+    If inside the domain they return the value directly (e.g. Ux(+1) returns u[idx(i+1,j)]).
+    This keeps the scheme equations clean and readable while handling boundary cases
+    separately according to the boundary condition type.
 
-    file << t << ",";
-    file << u[0];
-    for (int i = 1; i < nx; i++){
-        file << "," << u[i];
-    }
-    file.close();
-    std::cout << "Step: " << time_iter << " saved into: " << output_file << std::endl;
-}
+    PERIODIC BCs Take the value on the other side
+    (ni + nx) % nx es. ni = -1 => (-1 + nx)/nx = nx - 1
+                       ni = -1 --------------->  nx - 1
+                   es. ni = nx => (nx + nx)/nx = 0
+                       ni = nx --------------->  0
 
-void AdvectionDiffusionSolver1D::createOutputFile(){
-    std::ofstream file(output_file);
-    if (!file){
-        std::cerr << "Error: impossible to create file " << output_file << std::endl;
-        return;
-    }
-    file << "t";
-    for (int i = 0; i < nx; i++){
-        file << ",u" << i;
-    }
-    file.close();
-}
+    Ghost points for DIRICHLET BCs
+    Bc_Diriclet = (u(i+1) + u(i-1)) / 2
 
-void AdvectionDiffusionSolver1D::finalOutput(){
-    //TBI
-}
+    i = 0 => bcLeft         u[-1] = 2*bcLeft - u[1] 
+    ni = -1 → 2*bcLeft - u[-(-1)] = 2*bcLeft - u[1] 
+    ni = -2 → 2*bcLeft - u[-(-2)] = 2*bcLeft - u[2] 
 
-// void AdvectionDiffusionSolver1D::saveToFile(const std::string& filename) const {
-//     std::ofstream file(filename);
-//     if (!file.is_open()) {
-//         std::cerr << "Error: impossible to open file " << filename << std::endl;
-//         return;
-//     }
-    
-//     file << "# x u(x,t=" << t << ")" << std::endl;
-//     file << std::scientific << std::setprecision(10);
-    
-//     for (int i = 0; i < nx; ++i) {
-//         file << x[i] << " " << u[i] << std::endl;
-//     }
-    
-//     file.close();
-//     std::cout << "Solution saved to " << filename << std::endl;
-// }
+    i = nx - 1 => bcRight               u[nx]  = 2*bcRight - u[nx - 2]
+    ni = nx    → 2*bcRight - u[2*nx-2-nx]      = 2*bcRight - u[nx - 2]
+    ni = nx+1  → 2*bcRight - u[2*nx-2-(nx+1)]  = 2*bcRight - u[nx - 3]
 
-// void AdvectionDiffusionSolver1D::printStats() const {
-//     double uMin = *std::min_element(u.begin(), u.end());
-//     double uMax = *std::max_element(u.begin(), u.end());
-//     double uMean = 0.0;
-//     for (double val : u) {
-//         uMean += val;
-//     }
-//     uMean /= nx;
-    
-//     std::cout << "\nSolution Statistics (t = " << t << "):" << std::endl;
-//     std::cout << "  u_min  = " << uMin << std::endl;
-//     std::cout << "  u_max  = " << uMax << std::endl;
-//     std::cout << "  u_mean = " << uMean << std::endl;
-// }
+    Ghost points for NEUMANN BCs
+    Bc_Neumann = (u(i+1) - u(i-1)) / (2 * dx)
+    Bc_Neumann = (u(i+2) - u(i-2)) / (4 * dx)
+
+    i = 0 => bcLeft                  u[-1] = u[1] - 2 * bcLeft * dx
+    ni = -1 → u[-(-1)] + (-1)*2*bcLeft*dx  = u[1] - 2 * bcLeft * dx 
+    ni = -2 → u[-(-2)] + (-2)*2*bcLeft*dx  = u[2] - 4 * bcLeft * dx 
+
+    i = nx - 1 => bcRight                      u[nx] = u[nx-2] + 2 * bcRight * dx 
+    ni = nx   → u[2*nx-2-nx] + (1)*2*bcRight*dx      = u[nx-2] + 2 * bcRight * dx 
+    ni = nx+1 → u[2*nx-2-(nx+1)] + (2)*2*bcRight*dx  = u[nx-3] + 4 * bcRight * dx 
+
+    The lambda function Ux is defined inside the inner loop so that the current
+    index i is captured by reference [&] rather than passed as an explicit argument.
+    This keeps the scheme equations clean (e.g. Ux(-1), Ux(+1) instead of Ux(u, i, -1)).
+    Redefining the lambdas at each iteration has no performance cost: they are stack-allocated
+    objects with no heap allocation, and the compiler inlines them completely under -O2/-O3.
+*/

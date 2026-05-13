@@ -2,17 +2,6 @@
 
 A numerical solver in C++ for the advection-diffusion equation, currently supporting 1D and 2D formulations. Designed as a modular, extensible framework with future support for RANS equations planned.
 
-## Equation Solved
-
-```
-∂u/∂t + c·∂u/∂x = D·∂²u/∂x²
-```
-
-where:
-- `u(x,t)` — unknown variable (concentration, temperature, etc.)
-- `c` — advection speed [m/s]
-- `D` — diffusion coefficient [m²/s]
-
 ## Features
 
 ### Spatial Schemes
@@ -34,9 +23,9 @@ where:
 - **Periodic** — u(0) = u(L)
 
 ### Initial Conditions
-- **Gaussian** — smooth bell-shaped profile
-- **Square wave** — sharp step profile
-- **Sinusoidal** — smooth periodic oscillation
+- **Gaussian** — smooth bell-shaped profile 	(1D only)
+- **Square wave** — sharp step profile			(1D & 2D)
+- **Sinusoidal** — smooth periodic oscillations	(1D only)
 
 ## Dimensionless Numbers
 
@@ -101,7 +90,7 @@ The solver is fully configured via a `.cfg` text file. Lines starting with `#` a
 
 ```ini
 # Solver type
-SOLVER = ADVECTION_DIFFUSION_1D      # or ADVECTION_DIFFUSION_2D
+SOLVER = ADVECTION_DIFFUSION_1D      #  ADVECTION_DIFFUSION_1D | ADVECTION_DIFFUSION_2D | BURGERS_2D
 
 # Grid
 GRID_POINTS    = 201
@@ -137,6 +126,7 @@ OUTPUT_FREQUENCY = 10                # Save every N time steps
 
 ## Results and Visualization
 
+1D case:
 Results are saved as `.csv` files in the `results/` directory:
 - `mesh.csv` — grid coordinates
 - `output.csv` — solution `u` at each saved time step (one row per step)
@@ -149,43 +139,30 @@ To visualize the results simply run:
 pyhton3 visualize.py
 ```
 
-## Project Structure
+2D case:
+Results are saved as `.vtu` files in the `results/` directory. The `.pvd` file is used to visualize all the results saved in the `.vtu` files.
 
-```
-MVP_CFD/
-├── include/
-│   └── solver/
-│       ├── BaseSolver.h
-│       ├── AdvectionDiffusionSolver1D.h
-│       └── AdvectionDiffusionSolver2D.h
-├── src/
-│   ├── main.cpp
-│   └── solver/
-│       ├── BaseSolver.cpp
-│       ├── AdvectionDiffusionSolver1D.cpp
-│       └── AdvectionDiffusionSolver2D.cpp
-├── config.cfg
-├── Makefile
-└── README.md
-```
+To visualize the results open the `.pvd` file using Paraview.
+
 
 ## Roadmap
 
 - [x] 1D Advection-Diffusion solver
-- [ ] 2D Advection-Diffusion solver *(in progress)*
+- [x] 2D Advection-Diffusion solver
+- [x] 2D Burgers solver
 - [ ] Implicit schemes (Crank-Nicolson)
 - [ ] Non-uniform grids
-- [ ] Variable coefficients c(x), D(x)
 - [ ] Source terms
 - [ ] RANS equations
 - [ ] OpenMP/MPI parallelisation
-- [ ] VTK output for Paraview
+- [x] VTK output for Paraview
 
 ## References
 
 1. LeVeque, R. J. (2002). *Finite Volume Methods for Hyperbolic Problems*
 2. Lorena A. Barba *CFD Python: 12 steps to Navier-Stokes*
-3. Notes from university courses at Politecnico di Milano.
+3. Politecnico di Milano. *Lecture notes from university courses.*
+4. Tom-Robin Teschner. *cfd.university* 
 
 ## License
 

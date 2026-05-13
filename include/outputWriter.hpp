@@ -34,6 +34,13 @@
 //    w.write();
 // ============================================================
 
+// ---- filename helper ----
+inline std::string makeVTUFilename(const std::string& prefix, int step, int width = 6) {
+    std::ostringstream oss;
+    oss << prefix << "_" << std::setw(width) << std::setfill('0') << step << ".vtu";
+    return oss.str();
+}
+
 class VTUWriter {
 public:
     enum Encoding { ASCII, BASE64 };
@@ -336,9 +343,41 @@ private:
     std::vector<Step> steps_;
 };
 
-// ---- filename helper ----
-inline std::string makeVTUFilename(const std::string& prefix, int step, int width = 6) {
-    std::ostringstream oss;
-    oss << prefix << "_" << std::setw(width) << std::setfill('0') << step << ".vtu";
-    return oss.str();
-}
+
+class OutputWriter1D {
+public:
+    OutputWriter1D(const ConfigParser& cfg)
+    {
+    	filename_ = cfg.getString("OUTPUT_DIR") + cfg.getString("OUTPUT_FILE");
+    	nx = cfg.getInt("GRID_POINTS");
+	    std::ofstream file(filename_);
+	    if (!file){
+	        throw CannotOpenFile(filename_,"output");
+	    }
+	    file << "t";
+	    for (int i = 0; i < nx; i++){
+	        file << ",u" << i;
+	    }
+	    file.close();
+    }
+    void saveCurrentTimeStep(int timestep, const std::vector<double> u) {
+	    std::ofstream file(filename_, std::ios::app);
+	    if (!file){
+	        std::cerr << "Error: impossible to open file " << filename_ << std::endl;
+	        return;
+	    }
+	    file << '\n';
+
+	    file << timestep << ",";
+	    file << u[0];
+	    for (int i = 1; i < nx; i++){
+	        file << "," << u[i];
+	    }
+	    file.close();
+	    std::cout << "Step: " << timestep << " saved into: " << filename_ << std::endl;
+	}
+private:
+	std::string filename_;
+
+	int nx;
+};

@@ -4,7 +4,7 @@
 #include "ConfigParser.hpp"
 #include "InitialConditions.hpp"
 #include "BaseSolver.hpp"
-#include "vtuWriter.hpp"
+#include "outputWriter.hpp"
 #include <stdexcept>
 #include <vector>
 #include <string>
@@ -18,6 +18,7 @@
 class Burgers2D : public BaseSolver{
 public:
 	Burgers2D(const ConfigParser& config);
+	~Burgers2D() override; 
 
     // Configuration methods
     void setInitialCondition() override;
@@ -26,9 +27,6 @@ public:
     // Resolution methods
     void solve() override;
     void step(double dt) override;
-
-    //Output
-    void finalOutput() override;
     
     // Getters
     double getCFL() const override;
@@ -48,11 +46,11 @@ private:
     double bcBottom;                     
 
    	// Solution
-	// std::vector<double> u;  // x-component of velocity field. Declared in BaseSolver.
+	std::vector<double> u;     // x-component of velocity field. 
 	std::vector<double> v;     // y-component of velocity field.
 
     // Intermediate state vectors for RK4
-    //std::vector<double> u_temp;  // Declared in BaseSolver.
+    std::vector<double> u_temp; 
     std::vector<double> v_temp;
 
     // Intermediate RK4 stages 
@@ -111,12 +109,12 @@ private:
         // QUICK Scheme (Quadratic Upstream Interpolation for Convective Kinematics)
 
         double dux = (vel_x >= 0)
-            ? (-Ux(-2) + 8*Ux(-1) - 8*Ux(+1) + uij)   / (12.0 * dx)
-            : ( -uij   + 8*Ux(+1) - 8*Ux(-1) + Ux(+2)) / (12.0 * dx);
+            ? (Ux(-2) - 7*Ux(-1) + 3*uij + 3*Ux(+1))   / (8.0 * dx)
+            : ( -3*Ux(-1) - 3*uij +7*Ux(+1) - Ux(+2)) / (8.0 * dx);
 
         double duy = (vel_y >= 0)
-            ? (-Uy(-2) + 8*Uy(-1) - 8*Uy(+1) + uij)   / (12.0 * dy)
-            : ( -uij   + 8*Uy(+1) - 8*Uy(-1) + Uy(+2)) / (12.0 * dy);
+            ? (Uy(-2) - 7*Uy(-1) + 3*uij + 3*Uy(+1))   / (8.0 * dy)
+            : ( -3*Uy(-1) - 3*uij +7*Uy(+1) - Uy(+2))  / (8.0 * dy);
 
         return vel_x * dux + vel_y * duy;
     }

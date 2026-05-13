@@ -90,12 +90,13 @@ public:
         range_end_x = config.getDouble("RANGE_END_X_IC");
         range_start_y = config.getDouble("RANGE_START_Y_IC");
         range_end_y = config.getDouble("RANGE_END_Y_IC");
+        baseline = config.getDouble("BASELINE_VALUE_IC");
     }
     void setIC(std::vector<double>& u, const std::vector<double>& x, const std::vector<double>& y) override {
         for (size_t i = 0; i < x.size(); ++i) {
             for (size_t j = 0; j < y.size(); ++j){
                 u[i * y.size() + j] = (x[i] >= range_start_x && x[i] <= range_end_x
-                                    && y[j] >= range_start_y && y[j] <= range_end_y ) ? amplitude : 0.0;
+                                    && y[j] >= range_start_y && y[j] <= range_end_y ) ? amplitude : baseline;
             }
         }
     }
@@ -104,6 +105,7 @@ private:
     double range_end_x;
     double range_start_y;
     double range_end_y;
+    double baseline;
 };
 
 
