@@ -13,16 +13,16 @@
 class BaseSolver {
 public:
     
-    // Costruttore
+    // Constructor
     BaseSolver(const ConfigParser& config);
 
     virtual ~BaseSolver() = default;
     
-    // Metodi di configurazione
+    // Configuration methods
     virtual void setInitialCondition() = 0;
     virtual void setBoundaryConditions() = 0;
     
-    // Metodi di risoluzione
+    // Solver methods
     virtual void solve() = 0;
     virtual void step(double dt) = 0;
 
@@ -64,4 +64,3 @@ protected:
     void checkStability() const;
     bool getExplicitSchemeFlag() const;
 };
-

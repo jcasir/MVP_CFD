@@ -19,7 +19,7 @@ Burgers2D::Burgers2D(const ConfigParser& config)
 
 
     // Grid initialization
-    //Non-overlapping grid for PERIODIC (domain [0,L)), overlapping for DIRICHLET/NEUMANN (nodes at exact boundaries)
+    // Non-overlapping grid for PERIODIC (domain [0,L)), overlapping for DIRICHLET/NEUMANN (nodes at exact boundaries)
     dx = (bcType == BoundaryCondition::PERIODIC) ? Lx / nx : Lx / (nx - 1);
     dy = (bcType == BoundaryCondition::PERIODIC) ? Ly / ny : Ly / (ny - 1);
 
@@ -78,7 +78,7 @@ void Burgers2D::setInitialCondition() {
 
     initialCondition->setIC(u,x,y);
     initialCondition->setIC(v,x,y);
-    std::cout << "Condizione iniziale impostata." << std::endl;
+    std::cout << "Initial condition set." << std::endl;
 
     // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
     checkStability();
@@ -136,7 +136,7 @@ void Burgers2D::solve() {
         }
     }
     
-    std::cout << "Risoluzione completata dopo " << nSteps << " passi temporali." << std::endl;
+    std::cout << "Resolution completed after " << nSteps << " time steps." << std::endl;
 }
 
 void Burgers2D::step(double dt) {

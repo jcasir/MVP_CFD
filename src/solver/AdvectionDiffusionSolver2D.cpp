@@ -73,7 +73,7 @@ int AdvectionDiffusionSolver2D::idx(int i,int j) const{
 void AdvectionDiffusionSolver2D::setInitialCondition() {
 
     initialCondition->setIC(u,x,y);
-    std::cout << "Condizione iniziale impostata." << std::endl;
+    std::cout << "Initial condition set." << std::endl;
 
     // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
     checkStability();
@@ -128,7 +128,7 @@ void AdvectionDiffusionSolver2D::solve() {
         }
     }
     
-    std::cout << "Risoluzione completata dopo " << nSteps << " passi temporali." << std::endl;
+    std::cout << "Resolution completed after " << nSteps << " time steps." << std::endl;
 }
 
 void AdvectionDiffusionSolver2D::step(double dt) {

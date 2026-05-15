@@ -10,7 +10,7 @@ class ConfigParser {
 public:
     explicit ConfigParser(const std::string& filename);
 
-    // Getter con valore di default se la chiave non esiste
+    // Getters — throw KeyNotFound if the key is missing
     std::string getString(const std::string& key) const;
     int         getInt   (const std::string& key) const;
     double      getDouble(const std::string& key) const;
@@ -27,7 +27,7 @@ public:
     }
 
     bool hasKey(const std::string& key) const;
-    void print() const;  // utile per debug
+    void print() const;  // useful for debug
 
 private:
     std::unordered_map<std::string, std::string> data_;

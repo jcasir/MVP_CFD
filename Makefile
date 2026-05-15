@@ -29,7 +29,7 @@ else
   EXECSUFFIX =
 endif
 
-EXECUTABLE = solver1d$(EXECSUFFIX)
+EXECUTABLE = solver$(EXECSUFFIX)
 CONFIG     = config.cfg
 
 # ── Objects and automatic dependencies ─────────────────────────────────────── 

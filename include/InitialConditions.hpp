@@ -57,15 +57,17 @@ public:
     SquareWaveIC1D(const ConfigParser& config) : IInitialCondition1D(config){
         range_start = config.getDouble("RANGE_START_IC");
         range_end = config.getDouble("RANGE_END_IC");
+        baseline = config.getDouble("BASELINE_VALUE_IC");
     }
     void setIC(std::vector<double>& u, const std::vector<double>& x) override {
         for (size_t i = 0; i < x.size(); ++i) {
-            u[i] = (x[i] >= range_start && x[i] <= range_end) ? amplitude : 0.0;
+            u[i] = (x[i] >= range_start && x[i] <= range_end) ? amplitude : baseline;
         }
     }
 private:
     double range_start;
     double range_end;
+    double baseline;
 };
 class SinusoidalIC1D : public IInitialCondition1D { 
 public:

@@ -12,20 +12,20 @@
 #include <functional>
 
 /**
- * Risolutore 1D per l'equazione di avvezione-diffusione:
+ * 1D solver for the advection-diffusion equation:
  * ∂u/∂t + c*∂u/∂x = D*∂²u/∂x²
  */
 class AdvectionDiffusionSolver1D : public BaseSolver {
 public:
     
-    // Costruttore
+    // Constructor
     AdvectionDiffusionSolver1D(const ConfigParser& cfg);
     
-    // Metodi di configurazione
+    // Configuration methods
     void setInitialCondition() override;
     void setBoundaryConditions() override;
     
-    // Metodi di risoluzione
+    // Solver methods
     void solve() override;
     void step(double dt) override;
     
@@ -112,4 +112,3 @@ private:
     }
 
 };
-

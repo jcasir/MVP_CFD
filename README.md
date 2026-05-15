@@ -58,9 +58,9 @@ make BUILD=asan       # AddressSanitizer build (memory/UB checks)
 ```
 
 Executables produced:
-- `solver1d` — release
-- `solver1d_debug` — debug
-- `solver1d_asan` — asan
+- `solver` — release
+- `solver_debug` — debug
+- `solver_asan` — asan
 
 ```bash
 make run              # Build (release) and run with config.cfg
@@ -79,9 +79,9 @@ make run
 This builds the project (if needed) and runs it automatically with config.cfg. To use a different config file, run the executable directly:
 
 ```bash
-./solver1d <config_file>
+./solver <config_file>
 # example:
-./solver1d config.cfg
+./solver config.cfg
 ```
 
 ## Configuration File
@@ -89,39 +89,52 @@ This builds the project (if needed) and runs it automatically with config.cfg. T
 The solver is fully configured via a `.cfg` text file. Lines starting with `#` are comments.
 
 ```ini
+# MVP CFD solver configuration file
+
 # Solver type
-SOLVER = ADVECTION_DIFFUSION_1D      #  ADVECTION_DIFFUSION_1D | ADVECTION_DIFFUSION_2D | BURGERS_2D
+SOLVER = BURGERS_2D 	 			# ADVECTION_DIFFUSION_1D | ADVECTION_DIFFUSION_2D | BURGERS_2D
 
-# Grid
-GRID_POINTS    = 201
-DOMAIN_LENGHT  = 1.0
+# Grid options
+GRID_POINTS_X = 201
+GRID_POINTS_Y = 201
+DOMAIN_LENGHT_X = 2.0
+DOMAIN_LENGHT_Y = 2.0
 
-# Physics
-ADVECTION_SPEED = 1.0
-DIFFUSION_COEFF = 0.01
-
-# Time settings
-TIME_STEP    = 0.001
+# Simulation settings
+DIFFUSION_COEFF = 0.0
+TIME_STEP = 0.001
 INITIAL_TIME = 0.0
-END_TIME     = 1.5
+END_TIME = 3.0
 
-# Numerical schemes
-SPATIAL_SCHEME = UPWIND              # CENTRAL | UPWIND | QUICK
-TIME_SCHEME    = RK4                 # EULER_EXPLICIT | RK4
+# Spatial and Time schemes
+SPATIAL_SCHEME = QUICK   			# UPWIND | CENTRAL | QUICK
+TIME_SCHEME = RK4					# EULER_EXPLICIT | RK4
 
-# Initial condition
-INITIAL_CONDITIONS = GAUSSIAN        # GAUSSIAN | SQUARE_WAVE | SINUSOIDAL
+# Initial Conditions Settings
+INITIAL_CONDITIONS = SQUARE_WAVE
 
-# Boundary conditions
-BOUNDARY_CONDITIONS = PERIODIC       # DIRICHLET | NEUMANN | PERIODIC
-BC_LEFT  = 0.0
+# Possible value for INITIAL_CONDITIONS:
+#   GAUSSIAN    (1D only)  → requires: AMPLITUDE_IC, X0_IC, SIGMA_IC
+#   SQUARE_WAVE (1D e 2D)  → requires: AMPLITUDE_IC, BASELINE_VALUE_IC, RANGE_START_IC, RANGE_END_IC (1D)
+#                                       AMPLITUDE_IC, BASELINE_VALUE_IC, RANGE_START_X_IC, RANGE_END_X_IC,
+#                                                     RANGE_START_Y_IC, RANGE_END_Y_IC (2D)
+#   SINUSOIDAL  (1D only)  → requires: AMPLITUDE_IC
+
+#Boundary Conditions Settings
+BC_LEFT = 0.0
 BC_RIGHT = 0.0
+BC_TOP = 0.0
+BC_BOTTOM = 0.0
+BOUNDARY_CONDITIONS = PERIODIC 		# DIRICHLET | NEUMANN | PERIODIC
 
-# Output
-VERBOSE          = true
-OUTPUT_FILE      = results/output.csv
-MESH_FILE        = results/mesh.csv
-OUTPUT_FREQUENCY = 10                # Save every N time steps
+#Output flag
+VERBOSE = true
+
+#Results
+OUTPUT_DIR = results/
+OUTPUT_FILE = output
+OUTPUT_FREQUENCY = 20
+
 ```
 
 ## Results and Visualization

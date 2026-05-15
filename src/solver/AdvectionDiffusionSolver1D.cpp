@@ -28,7 +28,7 @@ AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) 
         k4.resize(nx, 0.0);
     }
 
-    std::ofstream file(output_dir + mesh_file);
+    std::ofstream file(output_dir + mesh_file + ".csv");
     if (!file){
         throw CannotOpenFile(output_dir + mesh_file,"mesh");
     }

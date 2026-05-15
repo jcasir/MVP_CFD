@@ -4,20 +4,20 @@
 #include <map>
 
 enum class SpatialScheme {
-    CENTRAL,        // Schema centrato (2° ordine)
-    UPWIND,         // Schema upwind (1° ordine)
-    QUICK           // Schema QUICK (3° ordine)
+    CENTRAL,        // Central difference scheme (2nd order)
+    UPWIND,         // Upwind scheme (1st order)
+    QUICK           // QUICK scheme (3rd order)
 };
 
 enum class TimeScheme {
-    EULER_EXPLICIT,     // Eulero esplicito
-    RK4                 // Runge-Kutta 4° ordine
+    EULER_EXPLICIT,     // Explicit Euler
+    RK4                 // 4th order Runge-Kutta
 };
 
 enum class BoundaryCondition {
-    DIRICHLET,      // Valore fisso al contorno
-    NEUMANN,        // Derivata fissa al contorno
-    PERIODIC        // Condizioni periodiche
+    DIRICHLET,      // Fixed value at boundary
+    NEUMANN,        // Fixed derivative at boundary
+    PERIODIC        // Periodic conditions
 };
 
 //enum maps initialization

@@ -15,7 +15,7 @@ void ConfigParser::parse(const std::string& filename) {
 
     std::string line;
     while (std::getline(file, line)) {
-        // Rimuovi commenti (tutto dopo '#')
+        // Strip comments (everything after '#')
         auto comment_pos = line.find('#');
         if (comment_pos != std::string::npos)
             line = line.substr(0, comment_pos);
@@ -23,7 +23,7 @@ void ConfigParser::parse(const std::string& filename) {
         line = trim(line);
         if (line.empty()) continue;
 
-        // Formato atteso: KEY = VALUE
+        // Expected format: KEY = VALUE
         auto eq_pos = line.find('=');
         if (eq_pos == std::string::npos) continue;
 
