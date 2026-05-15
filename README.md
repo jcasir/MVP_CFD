@@ -81,7 +81,7 @@ This builds the project (if needed) and runs it automatically with config.cfg. T
 ```bash
 ./solver <config_file>
 # example:
-./solver config.cfg
+./solver AdvDiff1D.cfg
 ```
 
 ## Configuration File
@@ -163,10 +163,9 @@ To visualize the results open the `.pvd` file using Paraview.
 - [x] 1D Advection-Diffusion solver
 - [x] 2D Advection-Diffusion solver
 - [x] 2D Burgers solver
-- [ ] Implicit schemes (Crank-Nicolson)
-- [ ] Non-uniform grids
-- [ ] Source terms
 - [ ] RANS equations
+- [ ] Implicit schemes
+- [ ] Non-uniform grids
 - [ ] OpenMP/MPI parallelisation
 - [x] VTK output for Paraview
 
