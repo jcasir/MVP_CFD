@@ -37,7 +37,7 @@ OBJECTS = $(patsubst %.cpp, $(OBJDIR)/%.o, $(SOURCES))
 DEPFILES = $(OBJECTS:.o=.d)
 
 # ── Main Target ──────────────────────────────────────────────────────────────
-.PHONY: all run clean cleanall plot debug asan help
+.PHONY: all run clean cleanall debug asan help
 
 all: $(EXECUTABLE)
 
@@ -74,19 +74,6 @@ clean:
 cleanall: clean
 	rm -f *.dat *.txt
 
-# ── Plot with automatically detected files ─────────────────────────────────── 
-DATFILES = $(wildcard *.dat)
-plot:
-ifeq ($(DATFILES),)
-	@echo "No .dat files found. Run 'make run' first."
-else
-	@echo "$(foreach f,$(DATFILES),'$(f)' w l lw 2 title '$(f)', )" | \
-	  gnuplot -e "set terminal qt; \
-	              set grid; set xlabel 'x'; set ylabel 'u'; \
-	              plot $(shell echo "$(foreach f,$(DATFILES),'$(f)' w l lw 2 title '$(f)',)" | sed 's/,$$//' ); \
-	              pause -1"
-endif
-
 # ── Help ────────────────────────────────────────────────────────────────────── 
 help:
 	@echo ""
@@ -98,6 +85,5 @@ help:
 	@echo "  make run               Compile and run" 
 	@echo "  make clean             Removes all objects and executables"
 	@echo "  make cleanall          Also removes .dat/.txt files" 
-	@echo "  make plot              Visualize all .dat files with gnuplot" 
 	@echo "  make help              Show this message" 
 	@echo ""
