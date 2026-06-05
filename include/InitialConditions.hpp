@@ -79,6 +79,16 @@ public:
         }
     }
 };
+class Constant1D : public IInitialCondition1D { 
+public:
+    Constant1D(const ConfigParser& config) : IInitialCondition1D(config){}
+
+    void setIC(std::vector<double>& u, const std::vector<double>& x) override {
+        for (size_t i = 0; i < x.size(); ++i) {
+            u[i] = amplitude;
+        }
+    }
+};
 
 
 
@@ -109,6 +119,18 @@ private:
     double range_end_y;
     double baseline;
 };
+class Constant2D : public IInitialCondition2D { 
+public:
+    Constant2D(const ConfigParser& config) : IInitialCondition2D(config){}
+
+    void setIC(std::vector<double>& u, const std::vector<double>& x, const std::vector<double>& y) override {
+        for (size_t i = 0; i < x.size(); ++i) {
+            for (size_t j = 0; j < y.size(); ++j){
+                u[i * y.size() + j] = amplitude;
+            }
+        }
+    }
+};
 
 
 // factory functions to instanciate the correct class.
@@ -117,11 +139,13 @@ inline std::unique_ptr<IInitialCondition1D> makeIC1D(const ConfigParser& config)
     if      (ic == "GAUSSIAN")    return std::make_unique<GaussianIC1D>(config);
     else if (ic == "SQUARE_WAVE") return std::make_unique<SquareWaveIC1D>(config);
     else if (ic == "SINUSOIDAL")  return std::make_unique<SinusoidalIC1D>(config);
+    else if (ic == "CONSTANT")  return std::make_unique<Constant1D>(config);
     else throw InvalidInitialCondition(ic,"1D");
 }
 inline std::unique_ptr<IInitialCondition2D> makeIC2D(const ConfigParser& config){
     std::string ic = config.getString("INITIAL_CONDITIONS");
     if (ic == "SQUARE_WAVE") return std::make_unique<SquareWaveIC2D>(config);
+    else if (ic == "CONSTANT")  return std::make_unique<Constant2D>(config);
     else throw InvalidInitialCondition(ic,"2D");
 }
 
