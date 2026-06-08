@@ -16,6 +16,9 @@ public:
     double      getDouble(const std::string& key) const;
     bool        getBool  (const std::string& key, bool def = false) const;
 
+    //Getter for the BCs for the Burgers and IncNS solvers
+    std::array<double,8> getBCs(const std::string& key) const;
+
     // Getter for the enumerations
     template <typename T>
     T getEnum(const std::string& key, const std::map<std::string, T>& mapping) const {

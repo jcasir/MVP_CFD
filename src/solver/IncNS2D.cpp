@@ -14,9 +14,6 @@ IncNS2D::IncNS2D(const ConfigParser& config)
     Lx          = m_cfg.getDouble("DOMAIN_LENGHT_X");
     Ly          = m_cfg.getDouble("DOMAIN_LENGHT_Y");
 
-    bcTop       = m_cfg.getDouble("BC_TOP");
-    bcBottom    = m_cfg.getDouble("BC_BOTTOM");
-
 
     // Grid initialization
     // Non-overlapping grid for PERIODIC (domain [0,L)), overlapping for DIRICHLET/NEUMANN (nodes at exact boundaries)
@@ -96,6 +93,7 @@ void IncNS2D::setInitialCondition() {
 void IncNS2D::setBoundaryConditions()
 {
     
+    BCs = getBCs("BOUNDARY_CONDITIONS_VALUES");
     std::cout << "Boundary conditions set: ";
     if (bcType == BoundaryCondition::DIRICHLET) {
         std::cout << "Dirichlet (left=" << bcLeft << ", right=" << bcRight 
@@ -152,8 +150,8 @@ void IncNS2D::step(double dt) {
             }
         }
         
-        applyBoundaryConditions(u);
-        applyBoundaryConditions(v);
+        applyBoundaryConditions(u,0);
+        applyBoundaryConditions(v,4);
         
     } else if (timeScheme == TimeScheme::RK4) {
         // Runge-Kutta 4° order
@@ -166,8 +164,8 @@ void IncNS2D::step(double dt) {
                 v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt * k1_y[idx(i,j)];
             }
         }
-        applyBoundaryConditions(u_temp);
-        applyBoundaryConditions(v_temp);
+        applyBoundaryConditions(u_temp,0);
+        applyBoundaryConditions(v_temp,4);
 
         k2_x = computeRHS(u_temp,u_temp,v_temp);
         k2_y = computeRHS(v_temp,u_temp,v_temp);
@@ -178,8 +176,8 @@ void IncNS2D::step(double dt) {
                 v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt * k2_y[idx(i,j)];
             }
         }
-        applyBoundaryConditions(u_temp);
-        applyBoundaryConditions(v_temp);
+        applyBoundaryConditions(u_temp,0);
+        applyBoundaryConditions(v_temp,4);
 
         k3_x = computeRHS(u_temp,u_temp,v_temp);
         k3_y = computeRHS(v_temp,u_temp,v_temp);
@@ -190,8 +188,8 @@ void IncNS2D::step(double dt) {
                 v_temp[idx(i,j)] = v[idx(i,j)] + dt * k3_y[idx(i,j)];
             }
         }
-        applyBoundaryConditions(u_temp);
-        applyBoundaryConditions(v_temp);
+        applyBoundaryConditions(u_temp,0);
+        applyBoundaryConditions(v_temp,4);
 
         k4_x = computeRHS(u_temp,u_temp,v_temp);
         k4_y = computeRHS(v_temp,u_temp,v_temp);
@@ -203,8 +201,8 @@ void IncNS2D::step(double dt) {
             }
         }
         
-        applyBoundaryConditions(u);
-        applyBoundaryConditions(v);
+        applyBoundaryConditions(u,0);
+        applyBoundaryConditions(v,4);
     }
     
     t += dt;
@@ -262,23 +260,23 @@ std::vector<double> IncNS2D::computeRHS(
 void IncNS2D::applyBoundaryConditions(std::vector<double>& u_vec) {
     if (bcType == BoundaryCondition::DIRICHLET) {
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = bcBottom;
-            u_vec[idx(i, ny - 1)] = bcTop;
+            u_vec[idx(i, 0)] = BCs[0 + BCs_offset]; // Bottom
+            u_vec[idx(i, ny - 1)] = BCs[1 + BCs_offset]; // Top
         }
         for (int j = 0; j < ny; ++j){
-            u_vec[idx(0, j)] = bcLeft;
-            u_vec[idx(nx - 1,j)] = bcRight;
+            u_vec[idx(0, j)] = BCs[2 + BCs_offset]; // Left
+            u_vec[idx(nx - 1,j)] = BCs[3 + BCs_offset]; // Right
         }
     } 
     else if (bcType == BoundaryCondition::NEUMANN) {
 
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = u_vec[idx(i, 1)] - bcBottom * dy;
-            u_vec[idx(i,ny - 1)] = u_vec[idx(i,ny - 2)] + bcTop * dy;
+            u_vec[idx(i, 0)] = u_vec[idx(i, 1)] - BCs[0 + BCs_offset] * dy; // Bottom
+            u_vec[idx(i,ny - 1)] = u_vec[idx(i,ny - 2)] + BCs[1 + BCs_offset] * dy; // Top
         }
         for (int j = 0; j < ny; ++j){
-            u_vec[idx(0, j)] = u_vec[idx(1, j)] - bcLeft * dx;
-            u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + bcRight * dx;
+            u_vec[idx(0, j)] = u_vec[idx(1, j)] - BCs[2 + BCs_offset] * dx; // Left
+            u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + BCs[3 + BCs_offset] * dx; //Right
         }
     }
 }

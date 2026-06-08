@@ -42,8 +42,9 @@ private:
     double dy;                     
     std::vector<double> x;          // Grid coordinates
     std::vector<double> y;          
-    double bcTop;                   // Boundary conditions exclusive to 2D problem
-    double bcBottom;                     
+    std::array<double, 8> BCs;      // Boundary Conditions values.
+    // Layout: { u_bottom, u_top, u_left, u_right,  <-- u component (horizontal velocity)
+    //           v_bottom, v_top, v_left, v_right } <-- v component (vertical velocity)
 
    	// Solution
 	std::vector<double> u;     // x-component of velocity field. 
