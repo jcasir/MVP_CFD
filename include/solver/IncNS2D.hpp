@@ -7,6 +7,7 @@
 #include "outputWriter.hpp"
 #include <stdexcept>
 #include <vector>
+#include <array>
 #include <string>
 #include <functional>
 
@@ -47,9 +48,11 @@ private:
     double dy;                     
     std::vector<double> x;          // Grid coordinates
     std::vector<double> y;          
-    std::array<double, 8> BCs;      // Boundary Conditions values.
-    // Layout: { u_bottom, u_top, u_left, u_right,  <-- u component (horizontal velocity)
-    //           v_bottom, v_top, v_left, v_right } <-- v component (vertical velocity)           
+
+    struct BoundaryConditionValues {
+        double bottom, top, left, right;
+    };
+    BoundaryConditionValues u_bcs, v_bcs;        
 
     // Physical parameters   
     double rho;                     // Density is constant since the solver is for the incompressible Navier Stokes equations
@@ -72,10 +75,11 @@ private:
     PVDWriter pvdWriter;
     
     // Private methods for calculations
-	std::vector<double> computeRHS(const std::vector<double>& field,
+    std::vector<double> computeRHS(const std::vector<double>& field,
                                 const std::vector<double>& u_curr,
-                                const std::vector<double>& v_curr) const;
-    void applyBoundaryConditions(std::vector<double>& u_vec);
+                                const std::vector<double>& v_curr,
+                                const BoundaryConditionValues& bcs) const;
+    void applyBoundaryConditions(std::vector<double>& u_vec, const BoundaryConditionValues& bcs);
     
     // Spatial schemes
     template<typename FuncX, typename FuncY>

@@ -14,10 +14,6 @@ Burgers2D::Burgers2D(const ConfigParser& config)
     Lx          = m_cfg.getDouble("DOMAIN_LENGHT_X");
     Ly          = m_cfg.getDouble("DOMAIN_LENGHT_Y");
 
-    // bcTop       = m_cfg.getDouble("BC_TOP");
-    // bcBottom    = m_cfg.getDouble("BC_BOTTOM");
-
-
     // Grid initialization
     // Non-overlapping grid for PERIODIC (domain [0,L)), overlapping for DIRICHLET/NEUMANN (nodes at exact boundaries)
     dx = (bcType == BoundaryCondition::PERIODIC) ? Lx / nx : Lx / (nx - 1);
@@ -30,6 +26,8 @@ Burgers2D::Burgers2D(const ConfigParser& config)
     v.resize(nx * ny, 0.0);
 
     if (timeScheme == TimeScheme::RK4){
+        // Preliminary initialiazation of all the intermediate states for RK4. This is done here to
+        // avoid the creation of these vector at every time step, inside the loop we only reset the values of the vectors.
 	    u_temp.resize(nx * ny, 0.0);
 	    v_temp.resize(nx * ny, 0.0);
 
@@ -95,16 +93,36 @@ void Burgers2D::setInitialCondition() {
 
 void Burgers2D::setBoundaryConditions()
 {
-    BCs = getBCs("BOUNDARY_CONDITIONS_VALUES");
+    std::array<double,4> arrayBCsU = m_cfg.getBCs<4>("BOUNDARY_CONDITIONS_VALUES_U");
+    std::array<double,4> arrayBCsV = m_cfg.getBCs<4>("BOUNDARY_CONDITIONS_VALUES_V");
+
+    // Lambda function to set the Boundary conditions for each direction of the velocity.
+    // Repetition is reduced since the process of printing and setting the boundary conditions is similar for
+    // both direction of the velocity.
+    auto makeBCs = [](const std::array<double, 4>& arr, const std::string& velName)
+        -> BoundaryConditionValues
+    {
+        constexpr std::string_view sides[] = {"Bottom", "Top", "Left", "Right"};
+        // For loop to print the boundary condition only if different than 0.0
+        for (int i = 0; i < 4; ++i) {
+            if (std::abs(arr[i]) > 1e-10)
+                std::cout << velName << " " << sides[i] << ": " << arr[i] << "\n";
+        }
+        // this line here is the one that really sets the boundary condition inside the designated struct
+        return {arr[0], arr[1], arr[2], arr[3]};
+    };
+
     std::cout << "Boundary conditions set: ";
-    if (bcType == BoundaryCondition::DIRICHLET) {
-        std::cout << "Dirichlet (left=" << bcLeft << ", right=" << bcRight 
-          << ", bottom=" << bcBottom << ", top=" << bcTop << ")";
-    } else if (bcType == BoundaryCondition::NEUMANN) {
-        std::cout << "Neumann";
-    } else {
-        std::cout << "Periodic";
+
+    if (bcType == BoundaryCondition::PERIODIC) {
+        std::cout << "Periodic\n";
+        return;
     }
+
+    std::cout << (bcType == BoundaryCondition::DIRICHLET ? "Dirichlet" : "Neumann") << ":\n";
+    // Setting of the value doesnt depend on the type of Boundary Condition so it is the same for both Dirichlet and Neumann
+    u_bcs = makeBCs(arrayBCsU, "U");
+    v_bcs = makeBCs(arrayBCsV, "V");
     std::cout << std::endl;
 }
 
@@ -116,9 +134,10 @@ void Burgers2D::solve() {
     
     int nSteps = 0;
     while (t < tEnd) {
-        if (getCFL() > 1.0) {
-        	std::cerr << "CFL number exceded the limits in the current iteration: " << nSteps;
-        	throw StabilityException("CFL",getCFL(),1.0); 
+        const double cfl = getCFL();
+        if (cfl > 1.0) {
+            std::cerr << "CFL exceeded limit at step " << nSteps << "\n";
+            throw StabilityException("CFL", cfl, 1.0);
         }
         double dt_actual = std::min(dt, tEnd - t);
         step(dt_actual);
@@ -139,79 +158,83 @@ void Burgers2D::solve() {
     std::cout << "Resolution completed after " << nSteps << " time steps." << std::endl;
 }
 
-void Burgers2D::step(double dt) {
+void Burgers2D::step(double dt_actual) {
     if (timeScheme == TimeScheme::EULER_EXPLICIT) {
         // Esplicit Euler: u^(n+1) = u^n + dt * RHS(u^n)
-        std::vector<double> rhs_x = computeRHS(u,u,v);
-        std::vector<double> rhs_y = computeRHS(v,u,v);
+        std::vector<double> rhs_x = computeRHS(u,u,v,u_bcs);
+        std::vector<double> rhs_y = computeRHS(v,u,v,v_bcs);
         
         for (int i = 0; i < nx; ++i) {
             for (int j = 0; j < ny; ++j){
-                u[idx(i,j)] += dt * rhs_x[idx(i,j)];
-                v[idx(i,j)] += dt * rhs_y[idx(i,j)];
+                u[idx(i,j)] += dt_actual * rhs_x[idx(i,j)];
+                v[idx(i,j)] += dt_actual * rhs_y[idx(i,j)];
             }
         }
         
-        applyBoundaryConditions(u,0);
-        applyBoundaryConditions(v,4);
+        applyBoundaryConditions(u,u_bcs);
+        applyBoundaryConditions(v,v_bcs);
         
     } else if (timeScheme == TimeScheme::RK4) {
         // Runge-Kutta 4° order
-        k1_x = computeRHS(u,u,v);
-        k1_y = computeRHS(v,u,v);
+        k1_x = computeRHS(u,u,v,u_bcs);
+        k1_y = computeRHS(v,u,v,v_bcs);
         
         for (int i = 0; i < nx; ++i) {
             for (int j = 0; j < ny; ++j){
-                u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt * k1_x[idx(i,j)];
-                v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt * k1_y[idx(i,j)];
+                u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt_actual * k1_x[idx(i,j)];
+                v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt_actual * k1_y[idx(i,j)];
             }
         }
-        applyBoundaryConditions(u_temp,0);
-        applyBoundaryConditions(v_temp,4);
+        applyBoundaryConditions(u_temp,u_bcs);
+        applyBoundaryConditions(v_temp,v_bcs);
 
-        k2_x = computeRHS(u_temp,u_temp,v_temp);
-        k2_y = computeRHS(v_temp,u_temp,v_temp);
+        k2_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
+        k2_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
         for (int i = 0; i < nx; ++i) {
             for (int j = 0; j < ny; ++j){
-                u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt * k2_x[idx(i,j)];
-                v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt * k2_y[idx(i,j)];
+                u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt_actual * k2_x[idx(i,j)];
+                v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt_actual * k2_y[idx(i,j)];
             }
         }
-        applyBoundaryConditions(u_temp,0);
-        applyBoundaryConditions(v_temp,4);
+        applyBoundaryConditions(u_temp,u_bcs);
+        applyBoundaryConditions(v_temp,v_bcs);
 
-        k3_x = computeRHS(u_temp,u_temp,v_temp);
-        k3_y = computeRHS(v_temp,u_temp,v_temp);
+        k3_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
+        k3_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
         for (int i = 0; i < nx; ++i) {
             for (int j = 0; j < ny; ++j){
-                u_temp[idx(i,j)] = u[idx(i,j)] + dt * k3_x[idx(i,j)];
-                v_temp[idx(i,j)] = v[idx(i,j)] + dt * k3_y[idx(i,j)];
+                u_temp[idx(i,j)] = u[idx(i,j)] + dt_actual * k3_x[idx(i,j)];
+                v_temp[idx(i,j)] = v[idx(i,j)] + dt_actual * k3_y[idx(i,j)];
             }
         }
-        applyBoundaryConditions(u_temp,0);
-        applyBoundaryConditions(v_temp,4);
+        applyBoundaryConditions(u_temp,u_bcs);
+        applyBoundaryConditions(v_temp,v_bcs);
 
-        k4_x = computeRHS(u_temp,u_temp,v_temp);
-        k4_y = computeRHS(v_temp,u_temp,v_temp);
+        k4_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
+        k4_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
         for (int i = 0; i < nx; ++i) {
             for (int j = 0; j < ny; ++j){
-                u[idx(i,j)] += (dt / 6.0) * (k1_x[idx(i,j)] + 2.0*k2_x[idx(i,j)] + 2.0*k3_x[idx(i,j)] + k4_x[idx(i,j)]);
-                v[idx(i,j)] += (dt / 6.0) * (k1_y[idx(i,j)] + 2.0*k2_y[idx(i,j)] + 2.0*k3_y[idx(i,j)] + k4_y[idx(i,j)]);
+                u[idx(i,j)] += (dt_actual / 6.0) * (k1_x[idx(i,j)] + 2.0*k2_x[idx(i,j)] + 2.0*k3_x[idx(i,j)] + k4_x[idx(i,j)]);
+                v[idx(i,j)] += (dt_actual / 6.0) * (k1_y[idx(i,j)] + 2.0*k2_y[idx(i,j)] + 2.0*k3_y[idx(i,j)] + k4_y[idx(i,j)]);
             }
         }
         
-        applyBoundaryConditions(u,0);
-        applyBoundaryConditions(v,4);
+        applyBoundaryConditions(u,u_bcs);
+        applyBoundaryConditions(v,v_bcs);
     }
     
-    t += dt;
+    t += dt_actual;
 }
 
 std::vector<double> Burgers2D::computeRHS(
-    const std::vector<double>& field, const std::vector<double>& u_curr, const std::vector<double>& v_curr) const
+    const std::vector<double>& field,
+    const std::vector<double>& u_curr,
+    const std::vector<double>& v_curr,
+    const BoundaryConditionValues& bcs
+    ) const
 {
     std::vector<double> rhs(nx * ny, 0.0);
     
@@ -230,11 +253,11 @@ std::vector<double> Burgers2D::computeRHS(
                 if (bcType == BoundaryCondition::PERIODIC)
                     return field[idx((ni + nx) % nx, j)];  
                 if (bcType == BoundaryCondition::DIRICHLET)
-                    return (ni < 0) ? 2*bcLeft  - field[idx(-ni, j)]
-                                    : 2*bcRight - field[idx(2*(nx-1) - ni, j)];
+                    return (ni < 0) ? 2*bcs.left  - field[idx(-ni, j)]
+                                    : 2*bcs.right - field[idx(2*(nx-1) - ni, j)];
                 // NEUMANN
-                return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcLeft  * dx
-                                : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcRight * dx;
+                return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcs.left  * dx
+                                : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcs.right * dx;
             };
             auto Uy = [&](int dj) -> double {
                 int nj = j + dj;
@@ -242,11 +265,11 @@ std::vector<double> Burgers2D::computeRHS(
                 if (bcType == BoundaryCondition::PERIODIC)
                     return field[idx(i, (nj + ny) % ny)];
                 if (bcType == BoundaryCondition::DIRICHLET)
-                    return (nj < 0) ? 2*bcBottom - field[idx(i, -nj)]
-                                    : 2*bcTop    - field[idx(i, 2*(ny-1) - nj)];
+                    return (nj < 0) ? 2*bcs.bottom - field[idx(i, -nj)]
+                                    : 2*bcs.top    - field[idx(i, 2*(ny-1) - nj)];
                 // NEUMANN
-                return (nj < 0) ? field[idx(i, 0)]    + nj * 2 * bcBottom * dy
-                                : field[idx(i, ny-1)] + (nj - (ny-1)) * 2 * bcTop * dy;
+                return (nj < 0) ? field[idx(i, -nj)]           + nj * 2 * bcs.bottom * dy
+                                : field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top * dy;
             };
             const double uij = field[idx(i,j)];
             const double vel_x = u_curr[idx(i,j)];
@@ -259,26 +282,26 @@ std::vector<double> Burgers2D::computeRHS(
     return rhs;
 }
 
-void Burgers2D::applyBoundaryConditions(std::vector<double>& u_vec, int BCs_offset) {
+void Burgers2D::applyBoundaryConditions(std::vector<double>& u_vec,const BoundaryConditionValues& bcs) {
     if (bcType == BoundaryCondition::DIRICHLET) {
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = BCs[0 + BCs_offset]; // Bottom
-            u_vec[idx(i, ny - 1)] = BCs[1 + BCs_offset]; // Top
+            u_vec[idx(i, 0)] = bcs.bottom; 
+            u_vec[idx(i, ny - 1)] = bcs.top; 
         }
         for (int j = 0; j < ny; ++j){
-            u_vec[idx(0, j)] = BCs[2 + BCs_offset]; // Left
-            u_vec[idx(nx - 1,j)] = BCs[3 + BCs_offset]; // Right
+            u_vec[idx(0, j)] = bcs.left;
+            u_vec[idx(nx - 1,j)] = bcs.right; 
         }
     } 
     else if (bcType == BoundaryCondition::NEUMANN) {
 
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = u_vec[idx(i, 1)] - BCs[0 + BCs_offset] * dy; // Bottom
-            u_vec[idx(i,ny - 1)] = u_vec[idx(i,ny - 2)] + BCs[1 + BCs_offset] * dy; // Top
+            u_vec[idx(i, 0)] = u_vec[idx(i, 1)] - bcs.bottom * dy; 
+            u_vec[idx(i,ny - 1)] = u_vec[idx(i,ny - 2)] + bcs.top * dy; 
         }
         for (int j = 0; j < ny; ++j){
-            u_vec[idx(0, j)] = u_vec[idx(1, j)] - BCs[2 + BCs_offset] * dx; // Left
-            u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + BCs[3 + BCs_offset] * dx; //Right
+            u_vec[idx(0, j)] = u_vec[idx(1, j)] - bcs.left * dx;
+            u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + bcs.right * dx; 
         }
     }
 }

@@ -70,35 +70,6 @@ bool ConfigParser::getBool(const std::string& key, bool def) const {
     return (v == "true" || v == "1" || v == "yes");
 }
 
-std::array<double,8> ConfigParser::getBCs(const std::string& key) const{
-    auto it = data_.find(key);
-    if (it == data_.end()) throw KeyNotFound(key);
-
-    std::stringstream is(it->second);
-    char t; // Variable to throw away '{'; ',' and '}';
-    std::array<double,8> results;
-
-    // Start reading the string
-    try{
-        is >> t; // '{';
-        is >> results[0]; // Fencepost problem
-        for (int i = 1; i < 8; ++i){
-            is >> t; // ','
-            is >> results[i];
-        }
-        is >> t; // '}';
-
-        // Check if parsing failed (e.g., missing elements, bad formatting, or wrong data types)
-        if (is.fail()){
-            throw std::runtime_error("Parsing of the Boundary Conditions values failed");
-        }
-    }
-    // Catch-all block for any unexpected system exceptions during execution
-    catch (...) {throw std::runtime_error("Invalid double for key: " + key); }
-
-    return results;
-}
-
 bool ConfigParser::hasKey(const std::string& key) const {
     return data_.count(key) > 0;
 }

@@ -66,7 +66,7 @@ run: all
 # ── Cleaning ───────────────────────────────────────────────────────────────── 
 clean:
 	rm -rf obj/
-	rm -f solver1d solver1d_debug solver1d_asan
+	rm -f solver solver_debug solver_asan
 	rm -f results/*.csv
 	rm -f results/*.vtu
 	rm -f results/*.pvd

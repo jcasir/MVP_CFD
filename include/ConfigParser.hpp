@@ -2,6 +2,8 @@
 
 #include <ErrorHandler.hpp>
 #include <string>
+#include <sstream>
+#include <array>
 #include <unordered_map>
 #include <map>
 #include <stdexcept>
@@ -17,7 +19,36 @@ public:
     bool        getBool  (const std::string& key, bool def = false) const;
 
     //Getter for the BCs for the Burgers and IncNS solvers
-    std::array<double,8> getBCs(const std::string& key) const;
+    template <size_t N>
+    std::array<double,N> getBCs(const std::string& key) const{
+        auto it = data_.find(key);
+        if (it == data_.end()) throw KeyNotFound(key);
+
+        std::stringstream is(it->second);
+        char t; // Variable to throw away '{'; ',' and '}';
+        std::array<double,N> results;
+
+        // Start reading the string
+        try{
+            is >> t; // '{';
+            is >> results[0]; // Fencepost problem
+            for (size_t i = 1; i < N; ++i){
+                is >> t; // ','
+                is >> results[i];
+            }
+            is >> t; // '}';
+
+        }
+        // Catch-all block for any unexpected system exceptions during execution
+        catch (...) {throw std::runtime_error("Invalid double for key: " + key); }
+
+        // Check if parsing failed (e.g., missing elements, bad formatting, or wrong data types)
+        if (is.fail()){
+            throw std::runtime_error("Parsing of the Boundary Conditions values failed");
+        }
+        
+        return results;
+    }
 
     // Getter for the enumerations
     template <typename T>
