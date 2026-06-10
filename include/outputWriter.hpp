@@ -143,8 +143,8 @@ private:
         coords.reserve(nNodes_ * 3);
         int kmax = is2D_ ? 0 : nz_;
 		for (int k = 0; k <= kmax; ++k)
-        for (int j = 0; j <= ny_; ++j)
-        for (int i = 0; i <= nx_; ++i) {
+        for (int i = 0; i <= nx_; ++i)
+        for (int j = 0; j <= ny_; ++j) {
             coords.push_back(x0_ + i * dx_);
             coords.push_back(y0_ + j * dy_);
             coords.push_back(z0_ + k * dz_);
@@ -166,8 +166,8 @@ private:
             std::vector<double> conn;
             conn.reserve(nCells_ * (is2D_ ? 4 : 8));
             for (int k = 0; k < nz_; ++k)
-            for (int j = 0; j < ny_; ++j)
-            for (int i = 0; i < nx_; ++i) {
+            for (int i = 0; i < nx_; ++i) 
+            for (int j = 0; j < ny_; ++j) {
                 if (is2D_) {
                     // VTK_QUAD, nodes in counter-clockwise order
                     conn.push_back(nodeIndex(i,   j,   0));
