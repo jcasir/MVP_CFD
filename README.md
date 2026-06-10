@@ -115,17 +115,24 @@ INITIAL_CONDITIONS = SQUARE_WAVE
 
 # Possible value for INITIAL_CONDITIONS:
 #   GAUSSIAN    (1D only)  → requires: AMPLITUDE_IC, X0_IC, SIGMA_IC
-#   SQUARE_WAVE (1D e 2D)  → requires: AMPLITUDE_IC, BASELINE_VALUE_IC, RANGE_START_IC, RANGE_END_IC (1D)
+#   SQUARE_WAVE (1D & 2D)  → requires: AMPLITUDE_IC, BASELINE_VALUE_IC, RANGE_START_IC, RANGE_END_IC (1D)
 #                                       AMPLITUDE_IC, BASELINE_VALUE_IC, RANGE_START_X_IC, RANGE_END_X_IC,
 #                                                     RANGE_START_Y_IC, RANGE_END_Y_IC (2D)
 #   SINUSOIDAL  (1D only)  → requires: AMPLITUDE_IC
+#   CONSTANT    (1D & 2D)  → requires: AMPLITUDE_IC
 
-#Boundary Conditions Settings
+BOUNDARY_CONDITIONS = PERIODIC 		# DIRICHLET | NEUMANN | PERIODIC
+
+#Boundary Conditions Settings for 1D and 2D Advection Diffusion solvers
 BC_LEFT = 0.0
 BC_RIGHT = 0.0
 BC_TOP = 0.0
 BC_BOTTOM = 0.0
-BOUNDARY_CONDITIONS = PERIODIC 		# DIRICHLET | NEUMANN | PERIODIC
+
+# Boundary Conditions Values for 2D solvers (Burgers and IncNS2D)
+# Layout: { bottom, top, left, right}
+#
+# Example below: Top lid moving right (u_top = 1.0), all other walls are no-slip (0.0)
 
 #Output flag
 VERBOSE = true
