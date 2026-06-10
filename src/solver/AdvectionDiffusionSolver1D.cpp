@@ -12,6 +12,9 @@ AdvectionDiffusionSolver1D::AdvectionDiffusionSolver1D(const ConfigParser& cfg) 
     c           = m_cfg.getDouble("ADVECTION_SPEED");
     mesh_file   = m_cfg.getString("MESH_FILE");
 
+    bcLeft      = m_cfg.getDouble("BC_LEFT");
+    bcRight     = m_cfg.getDouble("BC_RIGHT");
+
     initialCondition = makeIC1D(m_cfg);
 
     // Grid initialization

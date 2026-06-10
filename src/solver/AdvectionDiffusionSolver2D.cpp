@@ -17,6 +17,8 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
     c_x         = m_cfg.getDouble("ADVECTION_SPEED_X");
     c_y         = m_cfg.getDouble("ADVECTION_SPEED_Y");
 
+    bcLeft                  = m_cfg.getDouble("BC_LEFT");
+    bcRight                 = m_cfg.getDouble("BC_RIGHT");
     bcTop       = m_cfg.getDouble("BC_TOP");
     bcBottom    = m_cfg.getDouble("BC_BOTTOM");
 

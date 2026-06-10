@@ -13,8 +13,6 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
     time_iter               = 0;
 
     D                       = m_cfg.getDouble("DIFFUSION_COEFF");
-    bcLeft                  = m_cfg.getDouble("BC_LEFT");
-    bcRight                 = m_cfg.getDouble("BC_RIGHT");
     dt                      = m_cfg.getDouble("TIME_STEP");
     tEnd                    = m_cfg.getDouble("END_TIME");
     t                       = m_cfg.getDouble("INITIAL_TIME");
