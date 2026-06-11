@@ -19,14 +19,14 @@ public:
     bool        getBool  (const std::string& key, bool def = false) const;
 
     //Getter for the BCs for the Burgers and IncNS solvers
-    template <size_t N>
-    std::array<double,N> getBCs(const std::string& key) const{
+    template <typename T, size_t N>
+    std::array<T,N> getBCs(const std::string& key) const{
         auto it = data_.find(key);
         if (it == data_.end()) throw KeyNotFound(key);
 
         std::stringstream is(it->second);
         char t; // Variable to throw away '{'; ',' and '}';
-        std::array<double,N> results;
+        std::array<T,N> results;
 
         // Start reading the string
         try{

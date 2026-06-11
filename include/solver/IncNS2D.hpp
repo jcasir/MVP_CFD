@@ -49,10 +49,9 @@ private:
     std::vector<double> x;          // Grid coordinates
     std::vector<double> y;          
 
-    struct BoundaryConditionValues {
-        double bottom, top, left, right;
-    };
-    BoundaryConditionValues u_bcs, v_bcs;        
+    struct SideBC { double value; char type; };
+    struct BoundaryConditionValues { SideBC bottom, top, left, right; };
+    BoundaryConditionValues u_bcs, v_bcs, p_bcs;  
 
     // Physical parameters   
     double rho;                     // Density is constant since the solver is for the incompressible Navier Stokes equations

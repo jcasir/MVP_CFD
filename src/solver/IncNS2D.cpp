@@ -25,6 +25,7 @@ IncNS2D::IncNS2D(const ConfigParser& config)
 
     u.resize(nx * ny, 0.0);
     v.resize(nx * ny, 0.0);
+    p.resize(nx * ny, 0.0);
 
     if (timeScheme == TimeScheme::RK4){
 	    u_temp.resize(nx * ny, 0.0);
@@ -73,8 +74,14 @@ int IncNS2D::idx(int i,int j) const{
 
 void IncNS2D::setInitialCondition() {
 
+    // TODO: pressure should have a dedicated IC (e.g. solved from ∇²p=0 given the initial velocity field).
+    // For Burgers this was acceptable since there is no pressure variable, but for incompressible NS
+    // a consistent pressure initialization matters — though in practice most simulations start from rest
+    // (u=v=p=0) so this rarely causes issues.
+    // Any fix should live inside InitialCondition, not here.
     initialCondition->setIC(u,x,y);
     initialCondition->setIC(v,x,y);
+    initialCondition->setIC(p,x,y);
     std::cout << "Initial condition set." << std::endl;
 
     // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
@@ -86,42 +93,55 @@ void IncNS2D::setInitialCondition() {
     std::string outputFile = makeVTUFilename(output_file,0);
     VTUWriter vtuWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
     vtuWriter.addVector("u",u,v);
+    vtuWriter.addScalar("Pressure",p);
     vtuWriter.write();
     pvdWriter.addStep(0.0,outputFile);
 }
 
 void IncNS2D::setBoundaryConditions()
 {
-    std::array<double,4> arrayBCsU = m_cfg.getBCs<4>("BOUNDARY_CONDITIONS_VALUES_U");
-    std::array<double,4> arrayBCsV = m_cfg.getBCs<4>("BOUNDARY_CONDITIONS_VALUES_V");
-
     // Lambda function to set the Boundary conditions for each direction of the velocity.
     // Repetition is reduced since the process of printing and setting the boundary conditions is similar for
     // both direction of the velocity.
-    auto makeBCs = [](const std::array<double, 4>& arr, const std::string& velName)
+    auto makeBCs = [](const std::array<double, 4>& arrVal, 
+                    const std::array<char, 4>& arrType,
+                    const std::string& velName)
         -> BoundaryConditionValues
     {
         constexpr std::string_view sides[] = {"Bottom", "Top", "Left", "Right"};
-        // For loop to print the boundary condition only if different than 0.0
-        for (int i = 0; i < 4; ++i) {
-            if (std::abs(arr[i]) > 1e-10)
-                std::cout << velName << " " << sides[i] << ": " << arr[i] << "\n";
-        }
+        // For loop to print the boundary condition values and type for each side
+        for (int i = 0; i < 4; ++i)
+            std::cout << varName << " " << sides[i] << ": "
+                      << arrType[i] << " = " << arrVal[i] << "\n";
+
         // this line here is the one that really sets the boundary condition inside the designated struct
-        return {arr[0], arr[1], arr[2], arr[3]};
+        return { {arrVal[0],arrType[0]}, {arrVal[1],arrType[1]},
+                 {arrVal[2],arrType[2]}, {arrVal[3],arrType[3]} };
     };
 
     std::cout << "Boundary conditions set: ";
 
+    // For periodic boundary conditions, all individual boundary settings are skipped as they are not needed.
     if (bcType == BoundaryCondition::PERIODIC) {
         std::cout << "Periodic\n";
         return;
     }
 
-    std::cout << (bcType == BoundaryCondition::DIRICHLET ? "Dirichlet" : "Neumann") << ":\n";
-    // Setting of the value doesnt depend on the type of Boundary Condition so it is the same for both Dirichlet and Neumann
-    u_bcs = makeBCs(arrayBCsU, "U");
-    v_bcs = makeBCs(arrayBCsV, "V");
+    // First argument: array of boundary condition values on each side.
+    // Second argument: array of boundary condition types on each side.
+    // Third argument: name of the variable.
+    // The return value from getBCs() is passed directly as an argument to improve compactness
+    // and reduce memory allocation, even though this is not necessary since the temporary arrays
+    // inside this function would be destroyed at scope exit.
+    u_bcs = makeBCs(m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_U"),
+                    m_cfg.getBCs<char,4>("BOUNDARY_CONDITIONS_TYPES_U"),
+                    "U");
+    v_bcs = makeBCs(m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_V"),
+                    m_cfg.getBCs<char,4>("BOUNDARY_CONDITIONS_TYPES_V"),
+                    "V");
+    p_bcs = makeBCs(m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_P"),
+                    m_cfg.getBCs<char,4>("BOUNDARY_CONDITIONS_TYPES_P"),
+                    "P");
     std::cout << std::endl;
 }
 
@@ -282,26 +302,52 @@ std::vector<double> IncNS2D::computeRHS(
 }
 
 void IncNS2D::applyBoundaryConditions(std::vector<double>& u_vec,const BoundaryConditionValues& bcs) {
-    if (bcType == BoundaryCondition::DIRICHLET) {
+    // Setting bottom boundary conditions
+    if (bcs.bottom.type == 'D'){
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = bcs.bottom; 
-            u_vec[idx(i, ny - 1)] = bcs.top; 
+            u_vec[idx(i, 0)] = bcs.bottom.value;  
         }
-        for (int j = 0; j < ny; ++j){
-            u_vec[idx(0, j)] = bcs.left;
-            u_vec[idx(nx - 1,j)] = bcs.right; 
-        }
-    } 
-    else if (bcType == BoundaryCondition::NEUMANN) {
+    }
+    else{
+        for (int i = 0; i < nx; ++i) {
+            u_vec[idx(i, 0)] = u_vec[idx(i, 1)] - bcs.bottom.value * dy; 
+        }   
+    }
 
+    // Setting top boundary conditions
+    if (bcs.top.type == 'D'){
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = u_vec[idx(i, 1)] - bcs.bottom * dy; 
-            u_vec[idx(i,ny - 1)] = u_vec[idx(i,ny - 2)] + bcs.top * dy; 
+            u_vec[idx(i, ny - 1)] = bcs.top.value; 
         }
-        for (int j = 0; j < ny; ++j){
-            u_vec[idx(0, j)] = u_vec[idx(1, j)] - bcs.left * dx;
-            u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + bcs.right * dx; 
+    }
+    else{
+        for (int i = 0; i < nx; ++i) {
+            u_vec[idx(i,ny - 1)] = u_vec[idx(i,ny - 2)] + bcs.top.value * dy; 
+        }   
+    }
+
+    // Setting left boundary conditions
+    if (bcs.left.type == 'D'){
+        for (int j = 0; j < ny; ++j) {
+            u_vec[idx(0, j)] = bcs.left.value;  
         }
+    }
+    else{
+        for (int j = 0; j < ny; ++j) {
+            u_vec[idx(0, j)] = u_vec[idx(1, j)] - bcs.left.value * dx;
+        }   
+    }
+
+    // Setting right boundary conditions
+    if (bcs.right.type == 'D'){
+        for (int j = 0; j < ny; ++j) {
+            u_vec[idx(nx - 1,j)] = bcs.right.value; 
+        }
+    }
+    else{
+        for (int j = 0; j < ny; ++j) {
+            u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + bcs.right.value * dx; 
+        }   
     }
 }
 
