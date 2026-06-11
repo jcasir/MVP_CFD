@@ -121,18 +121,77 @@ INITIAL_CONDITIONS = SQUARE_WAVE
 #   SINUSOIDAL  (1D only)  → requires: AMPLITUDE_IC
 #   CONSTANT    (1D & 2D)  → requires: AMPLITUDE_IC
 
-BOUNDARY_CONDITIONS = PERIODIC 		# DIRICHLET | NEUMANN | PERIODIC
+============================ Boundary Condition settings ==============================
 
-#Boundary Conditions Settings for 1D and 2D Advection Diffusion solvers
+# Advection-Diffusion solver (scalar field: e.g. temperature, concentration)
+# Supports 1D and 2D configurations depending on grid setup
+#
+# Boundary condition is global (same type applied to all boundaries)
+# Allowed values: DIRICHLET | NEUMANN | PERIODIC
+#
+# BC_* values define scalar boundary values (used only for DIRICHLET and NEUMANN)
+
+BOUNDARY_CONDITIONS = PERIODIC  # DIRICHLET | NEUMANN | PERIODIC
+
 BC_LEFT = 0.0
 BC_RIGHT = 0.0
 BC_TOP = 0.0
 BC_BOTTOM = 0.0
 
-# Boundary Conditions Values for 2D solvers (Burgers and IncNS2D)
-# Layout: { bottom, top, left, right}
+=======================================================================================
+
+# Burgers equation solver (2D vector field: U, V)
+# Boundary conditions are defined per face (bottom, top, left, right)
 #
-# Example below: Top lid moving right (u_top = 1.0), all other walls are no-slip (0.0)
+# Supports Dirichlet (D) and Neumann (N) boundary conditions
+#
+# For periodic boundary conditions, set:
+#   BOUNDARY_CONDITION = PERIODIC
+# In this case, periodicity overrides individual boundary type settings.
+#
+# Example: lid-driven configuration (top lid moving in x-direction)
+
+BOUNDARY_CONDITIONS = DIRICHLET  # DIRICHLET | NEUMANN | PERIODIC
+
+BOUNDARY_CONDITIONS_VALUES_U = {0.0, 1.0, 0.0, 0.0}
+BOUNDARY_CONDITIONS_VALUES_V = {0.0, 0.0, 0.0, 0.0}
+
+=======================================================================================
+
+# Boundary Conditions Settings for Incompressible Navier Stokes solver
+# Layout: { bottom, top, left, right }
+#
+# BOUNDARY_CONDITIONS_VALUES_X defines the prescribed values for each boundary face.
+# Example: BOUNDARY_CONDITIONS_VALUES_U = {0.0, 1.0, 0.0, 0.0}
+#
+# BOUNDARY_CONDITIONS_TYPES_X defines the type of boundary condition per face.
+# Allowed values: Dirichlet (D), Neumann (N)
+# Example: BOUNDARY_CONDITIONS_TYPES_U = {D, N, N, N}
+#
+# At least one Dirichlet boundary condition is required to ensure a well-posed problem
+#
+# For periodic boundary conditions, set:
+#   BOUNDARY_CONDITION = PERIODIC
+# In this case, periodicity overrides individual boundary type settings.
+#
+# Otherwise set:
+#   BOUNDARY_CONDITION = NON_PERIODIC
+# and use BOUNDARY_CONDITIONS_TYPES_X to define D/N conditions.
+#
+# Example: lid-driven cavity
+# Top wall moves right (u = 1.0), all other walls are no-slip (u = 0.0)
+
+BOUNDARY_CONDITIONS_VALUES_U = {0.0, 1.0, 0.0, 0.0}
+BOUNDARY_CONDITIONS_VALUES_V = {0.0, 0.0, 0.0, 0.0}
+BOUNDARY_CONDITIONS_VALUES_P = {0.0, 0.0, 0.0, 0.0}
+
+BOUNDARY_CONDITIONS_TYPES_U = {D,D,D,D}
+BOUNDARY_CONDITIONS_TYPES_V = {D,D,D,D}
+BOUNDARY_CONDITIONS_TYPES_P = {N,D,N,N}
+
+BOUNDARY_CONDITION = NON_PERIODIC
+
+=======================================================================================
 
 #Output flag
 VERBOSE = true
