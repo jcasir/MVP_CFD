@@ -127,7 +127,7 @@ INITIAL_CONDITIONS = SQUARE_WAVE
 #   SINUSOIDAL  (1D only)  → requires: AMPLITUDE_IC
 #   CONSTANT    (1D & 2D)  → requires: AMPLITUDE_IC
 
-============================ Boundary Condition settings ==============================
+# ============================ Boundary Condition settings ==============================
 
 # Advection-Diffusion solver (scalar field: e.g. temperature, concentration)
 # Supports 1D and 2D configurations depending on grid setup
@@ -144,7 +144,7 @@ BC_RIGHT = 0.0
 BC_TOP = 0.0
 BC_BOTTOM = 0.0
 
-=======================================================================================
+# =======================================================================================
 
 # Burgers equation solver (2D vector field: U, V)
 # Boundary conditions are defined per face (bottom, top, left, right)
@@ -162,7 +162,7 @@ BOUNDARY_CONDITIONS = DIRICHLET  # DIRICHLET | NEUMANN | PERIODIC
 BOUNDARY_CONDITIONS_VALUES_U = {0.0, 1.0, 0.0, 0.0}
 BOUNDARY_CONDITIONS_VALUES_V = {0.0, 0.0, 0.0, 0.0}
 
-=======================================================================================
+# =======================================================================================
 
 # Boundary Conditions Settings for Incompressible Navier Stokes solver
 # Layout: { bottom, top, left, right }
@@ -197,7 +197,7 @@ BOUNDARY_CONDITIONS_TYPES_P = {N,D,N,N}
 
 BOUNDARY_CONDITIONS = NON_PERIODIC
 
-=======================================================================================
+# =======================================================================================
 
 #Output flag
 VERBOSE = true
