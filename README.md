@@ -84,6 +84,12 @@ This builds the project (if needed) and runs it automatically with config.cfg. T
 ./solver AdvDiff1D.cfg
 ```
 
+To perfrom a dry run (only set up of the simulation without actually running it), "dry" keyword has to be placed after the config_file name:
+
+```bash
+./solver <config_file> dry
+```
+
 ## Configuration File
 
 The solver is fully configured via a `.cfg` text file. Lines starting with `#` are comments.
@@ -175,7 +181,7 @@ BOUNDARY_CONDITIONS_VALUES_V = {0.0, 0.0, 0.0, 0.0}
 # In this case, periodicity overrides individual boundary type settings.
 #
 # Otherwise set:
-#   BOUNDARY_CONDITION = NON_PERIODIC
+#   BOUNDARY_CONDITIONS = NON_PERIODIC
 # and use BOUNDARY_CONDITIONS_TYPES_X to define D/N conditions.
 #
 # Example: lid-driven cavity
@@ -189,7 +195,7 @@ BOUNDARY_CONDITIONS_TYPES_U = {D,D,D,D}
 BOUNDARY_CONDITIONS_TYPES_V = {D,D,D,D}
 BOUNDARY_CONDITIONS_TYPES_P = {N,D,N,N}
 
-BOUNDARY_CONDITION = NON_PERIODIC
+BOUNDARY_CONDITIONS = NON_PERIODIC
 
 =======================================================================================
 
