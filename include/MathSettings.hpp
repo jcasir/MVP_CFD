@@ -17,7 +17,8 @@ enum class TimeScheme {
 enum class BoundaryCondition {
     DIRICHLET,      // Fixed value at boundary
     NEUMANN,        // Fixed derivative at boundary
-    PERIODIC        // Periodic conditions
+    PERIODIC,       // Periodic conditions
+    MIXED           // For Incompressible NS 2D when different types of BCs are needed for different sides of the domain
 };
 
 //enum maps initialization
@@ -33,5 +34,6 @@ inline const std::map<std::string, TimeScheme> timeSchemeMap = {
 inline const std::map<std::string, BoundaryCondition> boundaryConditionMap = {
     {"DIRICHLET", BoundaryCondition::DIRICHLET},
     {"NEUMANN",  BoundaryCondition::NEUMANN},
-    {"PERIODIC",   BoundaryCondition::PERIODIC}
+    {"PERIODIC",   BoundaryCondition::PERIODIC},
+    {"MIXED",   BoundaryCondition::MIXED}
 };

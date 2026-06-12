@@ -75,9 +75,11 @@ bool ConfigParser::hasKey(const std::string& key) const {
 }
 
 void ConfigParser::print() const {
+    std::cout << "\n ------------ Printing all the data from the config file -------- \n\n";
     for (const auto& [k, v] : data_)
         std::cout << k << " = " << v << "\n";
     std::cout << '\n';
+    std::cout << "\n ------------ end of config file printing -------- \n\n";
 }
 
 std::string ConfigParser::trim(const std::string& s) {

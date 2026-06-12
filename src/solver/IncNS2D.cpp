@@ -110,9 +110,10 @@ void IncNS2D::setBoundaryConditions()
     {
         constexpr std::string_view sides[] = {"Bottom", "Top", "Left", "Right"};
         // For loop to print the boundary condition values and type for each side
+        std::cout << "\nPrinting " << varName << " boundary values:\n";
         for (int i = 0; i < 4; ++i)
-            std::cout << varName << " " << sides[i] << ": "
-                      << arrType[i] << " = " << arrVal[i] << "\n";
+            std::cout << sides[i] << ": " << ((arrType[i] == 'D') ? "Dirichlet, " : "Neumann, ") 
+                    << varName << " = " << arrVal[i] << "\n";
 
         // this line here is the one that really sets the boundary condition inside the designated struct
         return { {arrVal[0],arrType[0]}, {arrVal[1],arrType[1]},
@@ -126,6 +127,8 @@ void IncNS2D::setBoundaryConditions()
         std::cout << "Periodic\n";
         return;
     }
+    std::cout << "Mixed\n";
+    std::cout << "Values and type of boundary condtion on each side:\n";
 
     // First argument: array of boundary condition values on each side.
     // Second argument: array of boundary condition types on each side.
