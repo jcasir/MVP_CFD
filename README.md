@@ -116,8 +116,7 @@ END_TIME = 3.0
 SPATIAL_SCHEME = QUICK   			# UPWIND | CENTRAL | QUICK
 TIME_SCHEME = RK4					# EULER_EXPLICIT | RK4
 
-# Initial Conditions Settings
-INITIAL_CONDITIONS = SQUARE_WAVE
+# ============================ Initial Conditions Settings ==============================
 
 # Possible value for INITIAL_CONDITIONS:
 #   GAUSSIAN    (1D only)  → requires: AMPLITUDE_IC, X0_IC, SIGMA_IC
@@ -126,6 +125,8 @@ INITIAL_CONDITIONS = SQUARE_WAVE
 #                                                     RANGE_START_Y_IC, RANGE_END_Y_IC (2D)
 #   SINUSOIDAL  (1D only)  → requires: AMPLITUDE_IC
 #   CONSTANT    (1D & 2D)  → requires: AMPLITUDE_IC
+
+INITIAL_CONDITIONS = SQUARE_WAVE
 
 # ============================ Boundary Condition settings ==============================
 
