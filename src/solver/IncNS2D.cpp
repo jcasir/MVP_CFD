@@ -105,7 +105,7 @@ void IncNS2D::setBoundaryConditions()
     // both direction of the velocity.
     auto makeBCs = [](const std::array<double, 4>& arrVal, 
                     const std::array<char, 4>& arrType,
-                    const std::string& velName)
+                    const std::string& varName)
         -> BoundaryConditionValues
     {
         constexpr std::string_view sides[] = {"Bottom", "Top", "Left", "Right"};
@@ -272,11 +272,11 @@ std::vector<double> IncNS2D::computeRHS(
                 if (bcType == BoundaryCondition::PERIODIC)
                     return field[idx((ni + nx) % nx, j)];  
                 if (bcType == BoundaryCondition::DIRICHLET)
-                    return (ni < 0) ? 2*bcs.left  - field[idx(-ni, j)]
-                                    : 2*bcs.right - field[idx(2*(nx-1) - ni, j)];
+                    return (ni < 0) ? 2*bcs.left.value  - field[idx(-ni, j)]
+                                    : 2*bcs.right.value - field[idx(2*(nx-1) - ni, j)];
                 // NEUMANN
-                return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcs.left  * dx
-                                : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcs.right * dx;
+                return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcs.left.value  * dx
+                                : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcs.right.value * dx;
             };
             auto Uy = [&](int dj) -> double {
                 int nj = j + dj;
@@ -284,11 +284,11 @@ std::vector<double> IncNS2D::computeRHS(
                 if (bcType == BoundaryCondition::PERIODIC)
                     return field[idx(i, (nj + ny) % ny)];
                 if (bcType == BoundaryCondition::DIRICHLET)
-                    return (nj < 0) ? 2*bcs.bottom - field[idx(i, -nj)]
-                                    : 2*bcs.top    - field[idx(i, 2*(ny-1) - nj)];
+                    return (nj < 0) ? 2*bcs.bottom.value - field[idx(i, -nj)]
+                                    : 2*bcs.top.value    - field[idx(i, 2*(ny-1) - nj)];
                 // NEUMANN
-                return (nj < 0) ? field[idx(i, -nj)]           + nj * 2 * bcs.bottom * dy
-                                : field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top * dy;
+                return (nj < 0) ? field[idx(i, -nj)]           + nj * 2 * bcs.bottom.value * dy
+                                : field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top.value * dy;
             };
             const double uij = field[idx(i,j)];
             const double vel_x = u_curr[idx(i,j)];

@@ -93,8 +93,8 @@ void Burgers2D::setInitialCondition() {
 
 void Burgers2D::setBoundaryConditions()
 {
-    std::array<double,4> arrayBCsU = m_cfg.getBCs<4>("BOUNDARY_CONDITIONS_VALUES_U");
-    std::array<double,4> arrayBCsV = m_cfg.getBCs<4>("BOUNDARY_CONDITIONS_VALUES_V");
+    std::array<double,4> arrayBCsU = m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_U");
+    std::array<double,4> arrayBCsV = m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_V");
 
     // Lambda function to set the Boundary conditions for each direction of the velocity.
     // Repetition is reduced since the process of printing and setting the boundary conditions is similar for
