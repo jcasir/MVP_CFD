@@ -237,9 +237,6 @@ To visualize the results open the `.pvd` file using Paraview.
 - [x] 2D Advection-Diffusion solver
 - [x] 2D Burgers solver
 - [ ] Incompressible Navier Stokes equations
-- [ ] Implicit schemes
-- [ ] Non-uniform grids
-- [ ] OpenMP/MPI parallelisation
 - [x] VTK output for Paraview
 
 ## References
