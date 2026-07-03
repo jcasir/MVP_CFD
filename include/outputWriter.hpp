@@ -123,14 +123,14 @@ private:
     std::vector<VectorField> vectors_;
 
     // ---- node (i,j,k) → flat index ----
-    //  k varies last (z), i first (x) → row-major x-fast
+    //  k varies last (z), j first (x) → row-major
     int nodeIndex(int i, int j, int k) const {
-        return k*(ny_+1)*(nx_+1) + j*(nx_+1) + i;
+        return k*(ny_+1)*(nx_+1) + i*(ny_+1) + j;
     }
 
     // ---- cells: same ordering as the phi array ----
     int cellIndex(int i, int j, int k) const {
-        return k*ny_*nx_ + j*nx_ + i;
+        return k*ny_*nx_ + i*ny_ + j;
     }
 
     // ---- POINTS ----
