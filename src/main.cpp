@@ -4,6 +4,7 @@
 #include "solver/Burgers2D.hpp"
 #include "solver/IncNS2D.hpp"
 #include <iostream>
+#include <cstring>
 #include <cmath>
 
 
@@ -17,9 +18,8 @@ int main(int argc, char* argv[]) {
         << "Config file missing\n";
         return 1;
     }
-    if (argc >= 3){
-        if (std::strcmp(argv[2], "dry") == 0) dryRunFlag = true;
-    }
+    if (argc >= 3 && std::strcmp(argv[2], "dry") == 0) dryRunFlag = true;
+
 
     ConfigParser cfg(argv[1]);
     std::string solver_type = cfg.getString("SOLVER");
