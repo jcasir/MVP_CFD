@@ -16,7 +16,7 @@
  * * Continuity equation (Incompressibility constraint):
  * ∂u/∂x + ∂v/∂y = 0
  * * Momentum equations (x and y components):
- * ∂u/∂t + (u·∇)u = -1/ρ·∇p ν·∇²u
+ * ∂u/∂t + (u·∇)u = -1/ρ·∇p + ν·∇²u
  * * Pressure-Poisson Equation (PPE) for mass conservation:
  * ∇²p = -ρ∇·[(u·∇)u]
  */
