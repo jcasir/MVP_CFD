@@ -86,16 +86,6 @@ void IncNS2D::setInitialCondition() {
 
     // Checking whether the CFL or the diffusion number are too high (for explicit schemes)
     checkStability();
-
-    //print initial condition
-    // VTUWriter wants the number of cells so it must be given (nx - 1) because nx is the number of points
-    // 1 for nz is the default to set the dimension to 2D.
-    std::string outputFile = makeVTUFilename(output_file,0);
-    VTUWriter vtuWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
-    vtuWriter.addVector("u",u,v);
-    vtuWriter.addScalar("Pressure",p);
-    vtuWriter.write();
-    pvdWriter.addStep(0.0,outputFile);
 }
 
 void IncNS2D::setBoundaryConditions()
@@ -130,8 +120,8 @@ void IncNS2D::setBoundaryConditions()
     std::cout << "Mixed\n";
     std::cout << "Values and type of boundary condtion on each side:\n";
 
-    // First argument: array of boundary condition values on each side.
-    // Second argument: array of boundary condition types on each side.
+    // First argument: array of boundary condition values on each side of the domain.
+    // Second argument: array of boundary condition types on each side of the domain.
     // Third argument: name of the variable.
     // The return value from getBCs() is passed directly as an argument to improve compactness
     // and reduce memory allocation, even though this is not necessary since the temporary arrays
@@ -145,7 +135,21 @@ void IncNS2D::setBoundaryConditions()
     p_bcs = makeBCs(m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_P"),
                     m_cfg.getBCs<char,4>("BOUNDARY_CONDITIONS_TYPES_P"),
                     "P");
-    std::cout << std::endl;
+    std::cout << '\n';
+
+    applyBoundaryConditions(u,u_bcs);
+    applyBoundaryConditions(v,v_bcs);
+
+    // Print initial field with initial condition and boundary condition set.
+    // VTUWriter wants the number of cells so it must be given (nx - 1) because nx is the number of points
+    // 1 for nz is the default to set the dimension to 2D.
+    std::cout << "Saving initial field with initial condition and boundary condition set.\n";
+    std::string outputFile = makeVTUFilename(output_file,0);
+    VTUWriter outputWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
+    outputWriter.addVector("u",u,v);
+    outputWriter.addScalar("Pressure",p);
+    outputWriter.write();
+    pvdWriter.addStep(0.0,outputFile);
 }
 
 void IncNS2D::solve() {
@@ -172,6 +176,7 @@ void IncNS2D::solve() {
             std::string outputFile = makeVTUFilename(output_file,nSteps);
             VTUWriter outputWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
             outputWriter.addVector("u",u,v);
+            outputWriter.addScalar("Pressure",p);
             outputWriter.write();
             pvdWriter.addStep(t,outputFile);
         }
@@ -269,29 +274,41 @@ std::vector<double> IncNS2D::computeRHS(
         for (int j = start; j < end_y ; ++j){
             // Ux(di) and Uy(dj) return neighbor values handling all boundary cases via ghost cells.
             // See end of file for derivation details.
+            //
+            // NOTE: Ux/Uy shift only the *transported* field, i.e. whatever
+            // was passed as `field` (u for the x-momentum equation, v for the y-momentum one).
+            // The advecting velocity is never evaluated at neighboring points: it enters only
+            // through vel_x/vel_y, sampled at the current point (i,j). So Ux(+1) = field(i+1,j)
+            // and Uy(+1) = field(i,j+1) in BOTH momentum equations — the lambda names refer to
+            // the grid direction of the shift, not to which equation is being assembled.
             auto Ux = [&](int di) -> double {
                 int ni = i + di;
                 if (ni >= 0 && ni < nx) return field[idx(ni, j)];
                 if (bcType == BoundaryCondition::PERIODIC)
                     return field[idx((ni + nx) % nx, j)];  
-                if (bcType == BoundaryCondition::DIRICHLET)
-                    return (ni < 0) ? 2*bcs.left.value  - field[idx(-ni, j)]
-                                    : 2*bcs.right.value - field[idx(2*(nx-1) - ni, j)];
-                // NEUMANN
-                return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcs.left.value  * dx
-                                : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcs.right.value * dx;
+
+                // If not PERIODIC BCs, then they are mixed. first we evaluate on which side we are, then
+                // we evaluate what to return based on what type of BC is imposed on that side
+                if (ni < 0)
+                    return (bcs.left.type == 'D') ? 2*bcs.left.value  - field[idx(-ni, j)]
+                          /*bcs.left.type == 'N'*/: field[idx(-ni,j)] + ni * 2 * bcs.left.value  * dx;
+                else 
+                    return (bcs.right.type == 'D') ? 2*bcs.right.value - field[idx(2*(nx-1) - ni, j)]
+                          /*bcs.right.type == 'N'*/: field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcs.right.value * dx;
             };
             auto Uy = [&](int dj) -> double {
                 int nj = j + dj;
                 if (nj >= 0 && nj < ny) return field[idx(i, nj)];
                 if (bcType == BoundaryCondition::PERIODIC)
                     return field[idx(i, (nj + ny) % ny)];
-                if (bcType == BoundaryCondition::DIRICHLET)
-                    return (nj < 0) ? 2*bcs.bottom.value - field[idx(i, -nj)]
-                                    : 2*bcs.top.value    - field[idx(i, 2*(ny-1) - nj)];
-                // NEUMANN
-                return (nj < 0) ? field[idx(i, -nj)]           + nj * 2 * bcs.bottom.value * dy
-                                : field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top.value * dy;
+
+                // MIXED
+                if (ni < 0)
+                    return (bcs.bottom.type == 'D') ? 2*bcs.bottom.value - field[idx(i, -nj)]
+                          /*bcs.bottom.type == 'N'*/: field[idx(i, -nj)] + nj * 2 * bcs.bottom.value * dy;
+                else 
+                    return (bcs.top.type == 'D') ? 2*bcs.top.value    - field[idx(i, 2*(ny-1) - nj)]
+                          /*bcs.top.type == 'N'*/: field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top.value * dy;
             };
             const double uij = field[idx(i,j)];
             const double vel_x = u_curr[idx(i,j)];
@@ -305,6 +322,11 @@ std::vector<double> IncNS2D::computeRHS(
 }
 
 void IncNS2D::applyBoundaryConditions(std::vector<double>& u_vec,const BoundaryConditionValues& bcs) {
+    /* Many ifs are required since the problem can have different type of boundary condition on every face
+    * of the domain. So for every face it is needed to check the type of boundary and only than apply the
+    * correct condition on that side. */
+    if (bcType == BoundaryCondition::PERIODIC) return;
+
     // Setting bottom boundary conditions
     if (bcs.bottom.type == 'D'){
         for (int i = 0; i < nx; ++i) {
@@ -371,6 +393,16 @@ double IncNS2D::getDiffusionNumber() const {
     If inside the domain they return the value directly (e.g. Ux(+1) returns u[idx(i+1,j)]).
     This keeps the scheme equations clean and readable while handling boundary cases
     separately according to the boundary condition type.
+
+    How the two momentum equations use these lambdas:
+    computeRHS assembles one equation at a time (x-momentum with field = u, y-momentum with
+    field = v), and the lambdas always act on `field`, i.e. on the velocity component being
+    transported. The other component is never evaluated at neighboring points: the advecting
+    velocities enter only through vel_x and vel_y, sampled at the current point (i,j).
+    Ux and Uy therefore refer to the direction of the shift on the grid, not to which equation
+    is being solved: Ux(±1) → field(i±1, j) and Uy(±1) → field(i, j±1), identically in both
+    the x-momentum and the y-momentum equation. Every numerical scheme (central, upwind, QUICK)
+    calls them with this same convention.
 
     PERIODIC BCs Take the value on the other side
     (ni + nx) % nx es. ni = -1 => (-1 + nx)/nx = nx - 1
