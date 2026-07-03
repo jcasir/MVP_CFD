@@ -85,9 +85,9 @@ void Burgers2D::setInitialCondition() {
     // VTUWriter wants the number of cells so it must be given (nx - 1) because nx is the number of points
     // 1 for nz is the default to set the dimension to 2D.
     std::string outputFile = makeVTUFilename(output_file,0);
-    VTUWriter vtuWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
-    vtuWriter.addVector("u",u,v);
-    vtuWriter.write();
+    VTUWriter outputWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
+    outputWriter.addVector("u",u,v);
+    outputWriter.write();
     pvdWriter.addStep(0.0,outputFile);
 }
 
