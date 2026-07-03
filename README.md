@@ -182,7 +182,7 @@ BOUNDARY_CONDITIONS_VALUES_V = {0.0, 0.0, 0.0, 0.0}
 # In this case, periodicity overrides individual boundary type settings.
 #
 # Otherwise set:
-#   BOUNDARY_CONDITIONS = NON_PERIODIC
+#   BOUNDARY_CONDITIONS = MIXED
 # and use BOUNDARY_CONDITIONS_TYPES_X to define D/N conditions.
 #
 # Example: lid-driven cavity
@@ -196,7 +196,7 @@ BOUNDARY_CONDITIONS_TYPES_U = {D,D,D,D}
 BOUNDARY_CONDITIONS_TYPES_V = {D,D,D,D}
 BOUNDARY_CONDITIONS_TYPES_P = {N,D,N,N}
 
-BOUNDARY_CONDITIONS = NON_PERIODIC
+BOUNDARY_CONDITIONS = MIXED
 
 # =======================================================================================
 
@@ -245,6 +245,7 @@ To visualize the results open the `.pvd` file using Paraview.
 2. Lorena A. Barba *CFD Python: 12 steps to Navier-Stokes*
 3. Politecnico di Milano. *Lecture notes from university courses.*
 4. Tom-Robin Teschner. *cfd.university* 
+5. Chorin, A. J. (1968). *Numerical solution of the Navier-Stokes equations.*
 
 ## License
 
