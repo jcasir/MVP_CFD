@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest  
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+        # Build in release mode. Check for compilation errors
+      - name: Build (release)
+        run: make
+
+        # Build with AddressSanitizer: check for memory bugs
+      - name: Build (asan)
+        run: make BUILD=asan
+
+        # Smoke test: Initialize all the solvers in dry run: check 
+        # if file parser, solver constructor, output file initialization, IC and BC configuration
+      - name: Smoke test (dry run, release)
+        run: |
+          mkdir -p results
+          ./solver AdvDiff1D.cfg dry
+          ./solver AdvDiff2D.cfg dry
+          ./solver Burgers2D.cfg dry
+          ./solver IncNS.cfg dry
+
+        # Smoke test with AddressSanitizer: same as smoke test but checking for memory bugs 
+      - name: Smoke test (dry run, asan)
+        run: |
+          ./solver_asan AdvDiff1D.cfg dry
+          ./solver_asan AdvDiff2D.cfg dry
+          ./solver_asan Burgers2D.cfg dry
+          ./solver_asan IncNS.cfg dry

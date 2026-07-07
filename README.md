@@ -1,3 +1,5 @@
+![CI](https://github.com/jcasir/MVP_CFD/actions/workflows/ci.yml/badge.svg)
+
 # MVP_CFD
 
 A numerical solver in C++ for the incompressible Navier Stokes, Burgers and advection-diffusion equations, currently supporting 1D and 2D formulations. Designed as a modular, extensible framework with future support for RANS equations planned.
