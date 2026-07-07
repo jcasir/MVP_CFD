@@ -303,7 +303,7 @@ std::vector<double> IncNS2D::computeRHS(
                     return field[idx(i, (nj + ny) % ny)];
 
                 // MIXED
-                if (ni < 0)
+                if (nj < 0)
                     return (bcs.bottom.type == 'D') ? 2*bcs.bottom.value - field[idx(i, -nj)]
                           /*bcs.bottom.type == 'N'*/: field[idx(i, -nj)] + nj * 2 * bcs.bottom.value * dy;
                 else 
