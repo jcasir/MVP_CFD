@@ -48,4 +48,11 @@ public:
         : GeneralRuntimeError("Initial Condition: " + ic + " not valid for " + dim + " initial condition") {}
 };
 
+class NotImplementedYet : public GeneralRuntimeError {
+public:
+    NotImplementedYet(const std::string& feat) 
+        : GeneralRuntimeError(feat + " not implemented yet") {}
+};
+
+
 
