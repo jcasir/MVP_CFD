@@ -3,4 +3,6 @@
 *.d
 *.vtu
 *.pvd
-solver
+/solver
+/solver_debug
+/solver_asan
