@@ -5,6 +5,7 @@
 #include "solver/IncNS2D.hpp"
 #include <iostream>
 #include <cstring>
+#include <memory>
 #include <cmath>
 
 

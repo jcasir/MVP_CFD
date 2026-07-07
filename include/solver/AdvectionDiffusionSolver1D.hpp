@@ -8,6 +8,7 @@
 #include "outputWriter.hpp"
 #include <stdexcept>
 #include <vector>
+#include <memory>
 #include <string>
 #include <functional>
 
