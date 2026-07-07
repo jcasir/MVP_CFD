@@ -242,7 +242,7 @@ To visualize the results open the `.pvd` file using Paraview.
 ## References
 
 1. LeVeque, R. J. (2002). *Finite Volume Methods for Hyperbolic Problems*
-2. Lorena A. Barba *CFD Python: 12 steps to Navier-Stokes*
+2. Barba, Lorena A., and Forsyth, Gilbert F. (2018). *CFD Python: the 12 steps to Navier-Stokes equations.* Journal of Open Source Education, 1(9), 21, https://doi.org/10.21105/jose.00021
 3. Politecnico di Milano. *Lecture notes from university courses.*
 4. Tom-Robin Teschner. *cfd.university* 
 5. Chorin, A. J. (1968). *Numerical solution of the Navier-Stokes equations.*
