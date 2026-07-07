@@ -98,7 +98,7 @@ The solver is fully configured via a `.cfg` text file. Lines starting with `#` a
 # MVP CFD solver configuration file
 
 # Solver type
-SOLVER = BURGERS_2D 	 			# ADVECTION_DIFFUSION_1D | ADVECTION_DIFFUSION_2D | BURGERS_2D
+SOLVER = BURGERS_2D 	 			# ADVECTION_DIFFUSION_1D | ADVECTION_DIFFUSION_2D | BURGERS_2D | INCOMPRESSIBLE_NS_2D
 
 # Grid options
 GRID_POINTS_X = 201
@@ -106,11 +106,16 @@ GRID_POINTS_Y = 201
 DOMAIN_LENGHT_X = 2.0
 DOMAIN_LENGHT_Y = 2.0
 
+#Physical settings
+DIFFUSION_COEFF = 0.01
+DENSITY = 1.0
+
 # Simulation settings
-DIFFUSION_COEFF = 0.0
 TIME_STEP = 0.001
 INITIAL_TIME = 0.0
 END_TIME = 3.0
+PPE_MAX_ITER = 50     				#PPE settings only for INCOMPRESSIBLE_NS_2D
+PPE_TOLERANCE = 1e-6
 
 # Spatial and Time schemes
 SPATIAL_SCHEME = QUICK   			# UPWIND | CENTRAL | QUICK
