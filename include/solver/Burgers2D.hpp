@@ -5,6 +5,7 @@
 #include "InitialConditions.hpp"
 #include "BaseSolver.hpp"
 #include "outputWriter.hpp"
+#include "ErrorHandler.hpp"
 #include <stdexcept>
 #include <vector>
 #include <memory>
