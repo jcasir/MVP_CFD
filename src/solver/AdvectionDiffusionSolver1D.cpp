@@ -107,11 +107,19 @@ void AdvectionDiffusionSolver1D::solve() {
 }
 
 void AdvectionDiffusionSolver1D::step(double dt) {
+
+    // Setting the start and end points for the loops. The boundary points are
+    // handled by applyBoundaryConditions() (for Dirichlet and Neumann BCs), and
+    // computeRHS leaves rhs = 0 there anyway, so we only iterate on the internal
+    // points. For PERIODIC BCs every point is internal, so the loops cover all points.
+    int start = (bcType == BoundaryCondition::PERIODIC) ? 0 : 1;
+    int end   = (bcType == BoundaryCondition::PERIODIC) ? nx : nx - 1;
+
     if (timeScheme == TimeScheme::EULER_EXPLICIT) {
         // Explicit Euler: u^(n+1) = u^n + dt * RHS(u^n)
         std::vector<double> rhs = computeRHS(u);
-        
-        for (int i = 0; i < nx; ++i) {
+
+        for (int i = start; i < end; ++i) {
             u[i] += dt * rhs[i];
         }
         
@@ -121,25 +129,25 @@ void AdvectionDiffusionSolver1D::step(double dt) {
         // 4th order Runge-Kutta
         k1 = computeRHS(u);
         
-        for (int i = 0; i < nx; ++i) {
+        for (int i = start; i < end; ++i) {
             u_temp[i] = u[i] + 0.5 * dt * k1[i];
         }
         applyBoundaryConditions(u_temp);
         k2 = computeRHS(u_temp);
         
-        for (int i = 0; i < nx; ++i) {
+        for (int i = start; i < end; ++i) {
             u_temp[i] = u[i] + 0.5 * dt * k2[i];
         }
         applyBoundaryConditions(u_temp);
         k3 = computeRHS(u_temp);
         
-        for (int i = 0; i < nx; ++i) {
+        for (int i = start; i < end; ++i) {
             u_temp[i] = u[i] + dt * k3[i];
         }
         applyBoundaryConditions(u_temp);
         k4 = computeRHS(u_temp);
         
-        for (int i = 0; i < nx; ++i) {
+        for (int i = start; i < end; ++i) {
             u[i] += (dt / 6.0) * (k1[i] + 2.0*k2[i] + 2.0*k3[i] + k4[i]);
         }
         

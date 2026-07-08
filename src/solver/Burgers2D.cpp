@@ -159,13 +159,22 @@ void Burgers2D::solve() {
 }
 
 void Burgers2D::step(double dt_actual) {
+
+    // Setting the start and end points for the loops. The boundary points are
+    // handled by applyBoundaryConditions() (for Dirichlet and Neumann BCs), and
+    // computeRHS leaves rhs = 0 there anyway, so we only iterate on the internal
+    // points. For PERIODIC BCs every point is internal, so the loops cover all points.
+    int start = (bcType == BoundaryCondition::PERIODIC) ? 0 : 1;
+    int end_x = (bcType == BoundaryCondition::PERIODIC) ? nx : nx - 1;
+    int end_y = (bcType == BoundaryCondition::PERIODIC) ? ny : ny - 1;
+
     if (timeScheme == TimeScheme::EULER_EXPLICIT) {
         // Esplicit Euler: u^(n+1) = u^n + dt * RHS(u^n)
         std::vector<double> rhs_x = computeRHS(u,u,v,u_bcs);
         std::vector<double> rhs_y = computeRHS(v,u,v,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u[idx(i,j)] += dt_actual * rhs_x[idx(i,j)];
                 v[idx(i,j)] += dt_actual * rhs_y[idx(i,j)];
             }
@@ -179,8 +188,8 @@ void Burgers2D::step(double dt_actual) {
         k1_x = computeRHS(u,u,v,u_bcs);
         k1_y = computeRHS(v,u,v,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt_actual * k1_x[idx(i,j)];
                 v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt_actual * k1_y[idx(i,j)];
             }
@@ -191,8 +200,8 @@ void Burgers2D::step(double dt_actual) {
         k2_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
         k2_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt_actual * k2_x[idx(i,j)];
                 v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt_actual * k2_y[idx(i,j)];
             }
@@ -203,8 +212,8 @@ void Burgers2D::step(double dt_actual) {
         k3_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
         k3_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u_temp[idx(i,j)] = u[idx(i,j)] + dt_actual * k3_x[idx(i,j)];
                 v_temp[idx(i,j)] = v[idx(i,j)] + dt_actual * k3_y[idx(i,j)];
             }
@@ -215,8 +224,8 @@ void Burgers2D::step(double dt_actual) {
         k4_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
         k4_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u[idx(i,j)] += (dt_actual / 6.0) * (k1_x[idx(i,j)] + 2.0*k2_x[idx(i,j)] + 2.0*k3_x[idx(i,j)] + k4_x[idx(i,j)]);
                 v[idx(i,j)] += (dt_actual / 6.0) * (k1_y[idx(i,j)] + 2.0*k2_y[idx(i,j)] + 2.0*k3_y[idx(i,j)] + k4_y[idx(i,j)]);
             }
