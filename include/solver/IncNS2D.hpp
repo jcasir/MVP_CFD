@@ -5,6 +5,7 @@
 #include "InitialConditions.hpp"
 #include "BaseSolver.hpp"
 #include "outputWriter.hpp"
+#include "ErrorHandler.hpp"
 #include <stdexcept>
 #include <vector>
 #include <memory>
@@ -14,12 +15,52 @@
 
 /**
  * @brief 2D solver for the Incompressible Navier-Stokes equations.
- * * Continuity equation (Incompressibility constraint):
- * ∂u/∂x + ∂v/∂y = 0
- * * Momentum equations (x and y components):
- * ∂u/∂t + (u·∇)u = -1/ρ·∇p + ν·∇²u
- * * Pressure-Poisson Equation (PPE) for mass conservation:
- * ∇²p = -ρ∇·[(u·∇)u]
+ * Continuity equation (Incompressibility constraint):
+ * div(u) = 0                                                                       [1]
+ * Momentum equations:
+ * ddt(u) + div(u,u) = -1/rho * grad(p) + D * lap(u)                                [2]
+ * 
+ * Discretized in time (note: the pressure term carries Δt like every other RHS term, and the
+ * pressure is taken at n+1 because there is no equation to advance it explicitly — it will be
+ * determined by the incompressibility constraint):
+ *
+ * u[n+1] = u[n] + Δt * (−div(u[n],u[n]) + D * lap(u[n])) - Δt/rho * grad(p[n+1])   [3]
+ *
+ * From this equation we can compute an intermediate velocity. This intermediate velocity is computed
+ * ignoring the pressure component. So we are basically advancing in time with everything, except
+ * the pressure. We call this velocity u_star
+ *
+ * u_star = u[n] + Δt * (−div(u[n],u[n]) + D * lap(u[n]))                           [4]
+ *
+ * So the correct velocity on the next step can be written as:
+ *
+ * u[n+1] = u_star - Δt/rho * grad(p[n+1])                                          [5]
+ *
+ * This equation has two unknowns: u[n+1] and p[n+1]. We first compute the pressure by imposing the
+ * incompressibility constraint on this equation. In particular we take the divergence of this equation
+ * and we impose div(u[n+1]) = 0. This leads to the Pressure-Poisson Equation (PPE):
+ *
+ *  lap(p[n+1]) = (rho/Δt) * div(u_star)                                            [6]
+ * 
+ * Since the PPE was derived by imposing that the divergence of the velocity at the next step is zero,
+ * solving it and applying the corrector enforces the incompressibility constraint: the corrected field 
+ * is divergence-free up to the tolerance reached by the iterations. Discretizing the equation yields a 
+ * linear system, which we solve iteratively (Gauss-Seidel).
+ *
+ * After p[n+1] is determined we go back to the correct velocity equation and finally compute u[n+1]:
+ *
+ * u[n+1] = u_star - Δt/rho * grad(p[n+1])                                          [7]
+ *
+ * The Helmholtz–Hodge theorem says that any vector field (with suitable BCs) splits uniquely
+ * into a divergence-free part plus a gradient part:
+ *
+ * u_star = u_div-free + grad(phi)                                                  [8]
+ *
+ * So the predictor [4] produces a generic u_star. The PPE computes precisely that scalar phi
+ * (here phi = (Δt/rho) * p) whose gradient is the "compressible" part of u_star. The corrector
+ * subtracts it, leaving the divergence-free part. Subtracting the gradient component is an
+ * orthogonal projection onto the space of divergence-free fields, hence the name projection method.
+ * 
  */
 
 class IncNS2D : public BaseSolver{
@@ -57,11 +98,21 @@ private:
     // Physical parameters   
     double rho;                     // Density is constant since the solver is for the incompressible Navier Stokes equations
 
+    // PPE settings and tolerance
+    int ppe_max_iter;
+    double ppe_toll;
+
    	// Solution
 	std::vector<double> u;     // x-component of velocity field. 
 	std::vector<double> v;     // y-component of velocity field.
     std::vector<double> p;     // pressure component
 
+    // Predictor velocity.
+    std::vector<double> u_star; 
+    std::vector<double> v_star;
+
+    //PPE Source term.
+    std::vector<double> b;
 
     // Intermediate state vectors for RK4
     std::vector<double> u_temp; 
@@ -87,7 +138,8 @@ private:
                                 const std::vector<double>& u_curr,
                                 const std::vector<double>& v_curr,
                                 const BoundaryConditionValues& bcs) const;
-    void applyBoundaryConditions(std::vector<double>& u_vec, const BoundaryConditionValues& bcs);
+    void solvePressurePoisson(double dt_actual);
+    void applyBoundaryConditions(std::vector<double>& field, const BoundaryConditionValues& bcs);
     
     // Spatial schemes
     double advectionTerm(const std::vector<double>& field, const BoundaryConditionValues& bcs,

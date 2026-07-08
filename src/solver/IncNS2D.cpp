@@ -8,11 +8,17 @@
 IncNS2D::IncNS2D(const ConfigParser& config)
  : BaseSolver(config), pvdWriter(output_dir + output_file + ".pvd")
 {
+    if (bcType == BoundaryCondition::PERIODIC) 
+        throw NotImplementedYet("Periodic boundary conditions");
 
-    nx          = m_cfg.getInt("GRID_POINTS_X");
-    ny          = m_cfg.getInt("GRID_POINTS_Y");
-    Lx          = m_cfg.getDouble("DOMAIN_LENGHT_X");
-    Ly          = m_cfg.getDouble("DOMAIN_LENGHT_Y");
+    nx              = m_cfg.getInt("GRID_POINTS_X");
+    ny              = m_cfg.getInt("GRID_POINTS_Y");
+    Lx              = m_cfg.getDouble("DOMAIN_LENGHT_X");
+    Ly              = m_cfg.getDouble("DOMAIN_LENGHT_Y");
+
+    rho             = m_cfg.getDouble("DENSITY");
+    ppe_max_iter    = m_cfg.getInt("PPE_MAX_ITER");
+    ppe_toll        = m_cfg.getDouble("PPE_TOLERANCE");
 
 
     // Grid initialization
@@ -26,6 +32,10 @@ IncNS2D::IncNS2D(const ConfigParser& config)
     u.resize(nx * ny, 0.0);
     v.resize(nx * ny, 0.0);
     p.resize(nx * ny, 0.0);
+
+    u_star.resize(nx * ny, 0.0);
+    v_star.resize(nx * ny, 0.0);
+    b.resize(nx * ny, 0.0);
 
     if (timeScheme == TimeScheme::RK4){
 	    u_temp.resize(nx * ny, 0.0);
@@ -228,28 +238,54 @@ void IncNS2D::solve() {
 }
 
 void IncNS2D::step(double dt_actual) {
+
+    // Setting the start and end point for the loops. Since the points on the
+    // boundary are handled by applyBoundaryConditions() (for Diriclet and Neumann BCs),
+    // we only iterate on the internal points of the boundary.
+    int start = (bcType == BoundaryCondition::PERIODIC) ? 0 : 1; 
+    int end_x = (bcType == BoundaryCondition::PERIODIC) ? nx : nx - 1;
+    int end_y = (bcType == BoundaryCondition::PERIODIC) ? ny : ny - 1;
+
     if (timeScheme == TimeScheme::EULER_EXPLICIT) {
         // Esplicit Euler: u^(n+1) = u^n + dt * RHS(u^n)
         std::vector<double> rhs_x = computeRHS(u,u,v,u_bcs);
         std::vector<double> rhs_y = computeRHS(v,u,v,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
-                u[idx(i,j)] += dt_actual * rhs_x[idx(i,j)];
-                v[idx(i,j)] += dt_actual * rhs_y[idx(i,j)];
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
+                u_star[idx(i,j)] = u[idx(i,j)] + dt_actual * rhs_x[idx(i,j)];
+                v_star[idx(i,j)] = v[idx(i,j)] + dt_actual * rhs_y[idx(i,j)];
             }
         }
         
+        applyBoundaryConditions(u_star,u_bcs);
+        applyBoundaryConditions(v_star,v_bcs);
+
+        solvePressurePoisson(dt_actual);
+
+        // Now we correct the velocity by subtracting the gradient of the pressure
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
+                u[idx(i,j)] = u_star[idx(i,j)] - (dt_actual/rho) * (p[idx(i+1,j)]- p[idx(i-1,j)])/(2*dx);
+                v[idx(i,j)] = v_star[idx(i,j)] - (dt_actual/rho) * (p[idx(i,j+1)]- p[idx(i,j-1)])/(2*dy);
+            }
+        }
+
         applyBoundaryConditions(u,u_bcs);
         applyBoundaryConditions(v,v_bcs);
-        
+
     } else if (timeScheme == TimeScheme::RK4) {
         // Runge-Kutta 4° order
+        // TODO: Still not implemented RK4 for the Incompressible NS solver.
+        // Requires a rethinking of the scheme since the method implemented to handle the pressure term
+        // is O(Δt) accurate in time making RK4, as it is now, useless.
+        throw NotImplementedYet("Runge-Kutta 4° order");
+
         k1_x = computeRHS(u,u,v,u_bcs);
         k1_y = computeRHS(v,u,v,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt_actual * k1_x[idx(i,j)];
                 v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt_actual * k1_y[idx(i,j)];
             }
@@ -260,8 +296,8 @@ void IncNS2D::step(double dt_actual) {
         k2_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
         k2_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u_temp[idx(i,j)] = u[idx(i,j)] + 0.5 * dt_actual * k2_x[idx(i,j)];
                 v_temp[idx(i,j)] = v[idx(i,j)] + 0.5 * dt_actual * k2_y[idx(i,j)];
             }
@@ -272,8 +308,8 @@ void IncNS2D::step(double dt_actual) {
         k3_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
         k3_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u_temp[idx(i,j)] = u[idx(i,j)] + dt_actual * k3_x[idx(i,j)];
                 v_temp[idx(i,j)] = v[idx(i,j)] + dt_actual * k3_y[idx(i,j)];
             }
@@ -284,8 +320,8 @@ void IncNS2D::step(double dt_actual) {
         k4_x = computeRHS(u_temp,u_temp,v_temp,u_bcs);
         k4_y = computeRHS(v_temp,u_temp,v_temp,v_bcs);
         
-        for (int i = 0; i < nx; ++i) {
-            for (int j = 0; j < ny; ++j){
+        for (int i = start; i < end_x; ++i) {
+            for (int j = start; j < end_y; ++j){
                 u[idx(i,j)] += (dt_actual / 6.0) * (k1_x[idx(i,j)] + 2.0*k2_x[idx(i,j)] + 2.0*k3_x[idx(i,j)] + k4_x[idx(i,j)]);
                 v[idx(i,j)] += (dt_actual / 6.0) * (k1_y[idx(i,j)] + 2.0*k2_y[idx(i,j)] + 2.0*k3_y[idx(i,j)] + k4_y[idx(i,j)]);
             }
@@ -322,6 +358,41 @@ std::vector<double> IncNS2D::computeRHS(
     }
     
     return rhs;
+}
+
+void IncNS2D::solvePressurePoisson(double dt_actual){
+    // This function solves the PPE. It first compute the source term b which
+    // is b = (rho/Δt) * div(u_star); Then it solves iterativelly the linear system
+    // derived from the PPE to compute the new pressure.
+
+    // compute the source term b
+    for (int i = 1; i < nx - 1; ++i) {
+        for (int j = 1; j < ny - 1; ++j){ 
+            b[idx(i,j)] = (rho/dt_actual) 
+                        * ((u_star[idx(i+1,j)] - u_star[idx(i-1,j)]) / (2*dx)
+                        + (v_star[idx(i,j+1)] - v_star[idx(i,j-1)]) / (2*dy));
+        }
+    }
+
+    double res = 2.0 * ppe_toll;
+    int k = 0;
+
+    // Start iteration to determine the pressure at the next time step
+    for (; k < ppe_max_iter && res > ppe_toll; ++k){
+        res = 0.0;
+        for (int i = 1; i < nx - 1; ++i) {
+            for (int j = 1; j < ny - 1; ++j){
+                double p_old = p[idx(i,j)];
+                p[idx(i,j)] = ( (p[idx(i+1,j)] + p[idx(i-1,j)]) * dy*dy
+                                  + (p[idx(i,j+1)] + p[idx(i,j-1)]) * dx*dx
+                                  -  b[idx(i,j)] * dx*dx * dy*dy ) / ( 2 * (dx*dx + dy*dy));
+                res = std::max(res, std::abs(p[idx(i,j)] - p_old));
+            }
+        }
+        applyBoundaryConditions(p, p_bcs);
+    }
+    if (res > ppe_toll)
+        std::cerr << "WARNING: PPE not converged after " << k << " iterations (res = " << res << ")\n";
 }
 
 double IncNS2D::advectionTerm(const std::vector<double>& field, const BoundaryConditionValues& bcs,
@@ -394,48 +465,48 @@ void IncNS2D::applyBoundaryConditions(std::vector<double>& field,const BoundaryC
     // Setting bottom boundary conditions
     if (bcs.bottom.type == 'D'){
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = bcs.bottom.value;  
+            field[idx(i, 0)] = bcs.bottom.value;  
         }
     }
     else{
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, 0)] = u_vec[idx(i, 1)] - bcs.bottom.value * dy; 
+            field[idx(i, 0)] = field[idx(i, 1)] - bcs.bottom.value * dy; 
         }   
     }
 
     // Setting top boundary conditions
     if (bcs.top.type == 'D'){
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i, ny - 1)] = bcs.top.value; 
+            field[idx(i, ny - 1)] = bcs.top.value; 
         }
     }
     else{
         for (int i = 0; i < nx; ++i) {
-            u_vec[idx(i,ny - 1)] = u_vec[idx(i,ny - 2)] + bcs.top.value * dy; 
+            field[idx(i,ny - 1)] = field[idx(i,ny - 2)] + bcs.top.value * dy; 
         }   
     }
 
     // Setting left boundary conditions
     if (bcs.left.type == 'D'){
         for (int j = 0; j < ny; ++j) {
-            u_vec[idx(0, j)] = bcs.left.value;  
+            field[idx(0, j)] = bcs.left.value;  
         }
     }
     else{
         for (int j = 0; j < ny; ++j) {
-            u_vec[idx(0, j)] = u_vec[idx(1, j)] - bcs.left.value * dx;
+            field[idx(0, j)] = field[idx(1, j)] - bcs.left.value * dx;
         }   
     }
 
     // Setting right boundary conditions
     if (bcs.right.type == 'D'){
         for (int j = 0; j < ny; ++j) {
-            u_vec[idx(nx - 1,j)] = bcs.right.value; 
+            field[idx(nx - 1,j)] = bcs.right.value; 
         }
     }
     else{
         for (int j = 0; j < ny; ++j) {
-            u_vec[idx(nx - 1,j)] = u_vec[idx(nx - 2,j)] + bcs.right.value * dx; 
+            field[idx(nx - 1,j)] = field[idx(nx - 2,j)] + bcs.right.value * dx; 
         }   
     }
 }
