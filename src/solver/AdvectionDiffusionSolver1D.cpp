@@ -169,26 +169,70 @@ std::vector<double> AdvectionDiffusionSolver1D::computeRHS(
     
     // Calculate RHS for internal points
     for (int i = start; i < end; ++i) {
-        // Ux(di) returns neighbor values handling all boundary cases via ghost cells.
-        // See end of file for derivation details.
-        auto Ux = [&](int di) -> double {
-            int ni = i + di;
-            if (ni >= 0 && ni < nx) return u_current[ni];
-            if (bcType == BoundaryCondition::PERIODIC)
-                return u_current[(ni + nx) % nx];
-            if (bcType == BoundaryCondition::DIRICHLET)
-                return (ni < 0) ? 2*bcLeft  - u_current[-ni]
-                                : 2*bcRight - u_current[2*(nx-1) - ni];
-            // NEUMANN
-            return (ni < 0) ? u_current[-ni]           + ni * 2 * bcLeft  * dx
-                            : u_current[2*(nx-1) - ni] + (ni - (nx-1)) * 2 * bcRight * dx;
-        };
-        const double ui = u_current[i];
         // RHS = -c * ∂u/∂x + D * ∂²u/∂x²
-        rhs[i] = -advectionTerm(Ux, ui) + diffusionTerm(Ux, ui);
+        rhs[i] = -advectionTerm(u_current, i) + diffusionTerm(u_current, i);
     }
-    
+
     return rhs;
+}
+
+// neighbor() returns neighbor values handling all boundary cases via ghost cells.
+// See end of file for derivation details.
+double AdvectionDiffusionSolver1D::neighbor(const std::vector<double>& field, int i, int di) const
+{
+    int ni = i + di;
+    if (ni >= 0 && ni < nx) return field[ni];
+    if (bcType == BoundaryCondition::PERIODIC)
+        return field[(ni + nx) % nx];
+    if (bcType == BoundaryCondition::DIRICHLET)
+        return (ni < 0) ? 2*bcLeft  - field[-ni]
+                        : 2*bcRight - field[2*(nx-1) - ni];
+    // NEUMANN
+    return (ni < 0) ? field[-ni]           + ni * 2 * bcLeft  * dx
+                    : field[2*(nx-1) - ni] + (ni - (nx-1)) * 2 * bcRight * dx;
+}
+
+double AdvectionDiffusionSolver1D::advectionTerm(const std::vector<double>& field, int i) const
+{
+    if (spatialScheme == SpatialScheme::CENTRAL) {
+        return centralDifference(field, i);
+    } else if (spatialScheme == SpatialScheme::UPWIND) {
+        return upwindDifference(field, i);
+    } else { // QUICK
+        return quickDifference(field, i);
+    }
+}
+
+double AdvectionDiffusionSolver1D::diffusionTerm(const std::vector<double>& field, int i) const
+{
+    // Lambda function to improve readability of the equation below
+    auto Ux = [&](int di) { return neighbor(field, i, di); };
+    // Central differencies of the second order for the diffusion.
+    return D * (Ux(+1) - 2.0*Ux(0) + Ux(-1)) / (dx * dx);
+}
+
+double AdvectionDiffusionSolver1D::centralDifference(const std::vector<double>& field, int i) const
+{
+    auto Ux = [&](int di) { return neighbor(field, i, di); };
+    return c * (Ux(+1) - Ux(-1)) / (2.0 * dx);
+}
+
+double AdvectionDiffusionSolver1D::upwindDifference(const std::vector<double>& field, int i) const
+{
+    auto Ux = [&](int di) { return neighbor(field, i, di); };
+    return c * ((c >= 0) ? (Ux(0) - Ux(-1)) / dx : (Ux(+1) - Ux(0)) / dx);
+}
+
+double AdvectionDiffusionSolver1D::quickDifference(const std::vector<double>& field, int i) const
+{
+    // QUICK Scheme (Quadratic Upstream Interpolation for Convective Kinematics)
+
+    auto Ux = [&](int di) { return neighbor(field, i, di); };
+    double dux = (c >= 0)
+        ? (Ux(-2) - 7*Ux(-1) + 3*Ux(0) + 3*Ux(+1))  / (8.0 * dx)
+        : ( -3*Ux(-1) - 3*Ux(0) +7*Ux(+1) - Ux(+2)) / (8.0 * dx);
+
+    return c * dux;
 }
 
 void AdvectionDiffusionSolver1D::applyBoundaryConditions(std::vector<double>& u_vec) {
@@ -213,10 +257,12 @@ double AdvectionDiffusionSolver1D::getDiffusionNumber() const {
 }
 
 /*
-    Ux(di) return neighbor values handling all boundary cases via ghost cells.
-    If inside the domain they return the value directly (e.g. Ux(+1) returns u[idx(i+1,j)]).
-    This keeps the scheme equations clean and readable while handling boundary cases
-    separately according to the boundary condition type.
+    neighbor(di) returns neighbor values handling all boundary cases via ghost cells.
+    If inside the domain it returns the value directly (e.g. neighbor with di = +1
+    returns u[i+1]). This keeps the scheme equations clean and readable while handling
+    boundary cases separately according to the boundary condition type.
+    Inside each spatial scheme, a thin local lambda Ux(di) aliases this function so the
+    stencil formulas stay compact (Ux(+1) instead of neighbor(field, i, +1)).
 
     PERIODIC BCs Take the value on the other side
     (ni + nx) % nx es. ni = -1 => (-1 + nx)/nx = nx - 1
@@ -247,9 +293,8 @@ double AdvectionDiffusionSolver1D::getDiffusionNumber() const {
     ni = nx   → u[2*nx-2-nx] + (1)*2*bcRight*dx      = u[nx-2] + 2 * bcRight * dx 
     ni = nx+1 → u[2*nx-2-(nx+1)] + (2)*2*bcRight*dx  = u[nx-3] + 4 * bcRight * dx 
 
-    The lambda function Ux is defined inside the inner loop so that the current
-    index i is captured by reference [&] rather than passed as an explicit argument.
-    This keeps the scheme equations clean (e.g. Ux(-1), Ux(+1) instead of Ux(u, i, -1)).
-    Redefining the lambdas at each iteration has no performance cost: they are stack-allocated
-    objects with no heap allocation, and the compiler inlines them completely under -O2/-O3.
+    Performance note: neither the member-function calls nor the adapter lambda Ux add
+    any overhead. Everything lives in the same translation unit, so under -O2/-O3 the compiler
+    inlines both layers completely — the generated machine code is the same as writing the
+    ghost-cell logic directly inside the stencil formulas.
 */

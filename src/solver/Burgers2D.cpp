@@ -72,6 +72,45 @@ int Burgers2D::idx(int i,int j) const{
     return (i * ny + j);
 }
 
+double Burgers2D::neighborX(const std::vector<double>& field, const BoundaryConditionValues& bcs,
+             int i, int j, int di) const{
+    // neighborX() and neighborY() return neighbor values handling all boundary cases via ghost cells.
+    // See end of file for derivation details.
+    //
+    // NOTE: neighborX/neighborY shift only the *transported* field, i.e. whatever
+    // was passed as `field` (u for the x-momentum equation, v for the y-momentum one).
+    // The advecting velocity is never evaluated at neighboring points: it enters only
+    // through cx/cy, sampled at the current point (i,j). So neighborX(...,+1) = field(i+1,j)
+    // and neighborY(...,+1) = field(i,j+1) in BOTH momentum equations — the function names
+    // refer to the grid direction of the shift, not to which equation is being assembled.
+
+    int ni = i + di;
+    if (ni >= 0 && ni < nx) return field[idx(ni, j)];
+    if (bcType == BoundaryCondition::PERIODIC)
+        return field[idx((ni + nx) % nx, j)];
+    if (bcType == BoundaryCondition::DIRICHLET)
+        return (ni < 0) ? 2*bcs.left  - field[idx(-ni, j)]
+                        : 2*bcs.right - field[idx(2*(nx-1) - ni, j)];
+    // NEUMANN
+    return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcs.left  * dx
+                    : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcs.right * dx;
+}
+
+double Burgers2D::neighborY(const std::vector<double>& field, const BoundaryConditionValues& bcs,
+             int i, int j, int dj) const{
+
+    int nj = j + dj;
+    if (nj >= 0 && nj < ny) return field[idx(i, nj)];
+    if (bcType == BoundaryCondition::PERIODIC)
+        return field[idx(i, (nj + ny) % ny)];
+    if (bcType == BoundaryCondition::DIRICHLET)
+        return (nj < 0) ? 2*bcs.bottom - field[idx(i, -nj)]
+                        : 2*bcs.top    - field[idx(i, 2*(ny-1) - nj)];
+    // NEUMANN
+    return (nj < 0) ? field[idx(i, -nj)]           + nj * 2 * bcs.bottom * dy
+                    : field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top * dy;
+}
+
 void Burgers2D::setInitialCondition() {
 
     initialCondition->setIC(u,x,y);
@@ -254,41 +293,75 @@ std::vector<double> Burgers2D::computeRHS(
     
     for (int i = start; i < end_x; ++i) {
         for (int j = start; j < end_y ; ++j){
-            // Ux(di) and Uy(dj) return neighbor values handling all boundary cases via ghost cells.
-            // See end of file for derivation details.
-            auto Ux = [&](int di) -> double {
-                int ni = i + di;
-                if (ni >= 0 && ni < nx) return field[idx(ni, j)];
-                if (bcType == BoundaryCondition::PERIODIC)
-                    return field[idx((ni + nx) % nx, j)];  
-                if (bcType == BoundaryCondition::DIRICHLET)
-                    return (ni < 0) ? 2*bcs.left  - field[idx(-ni, j)]
-                                    : 2*bcs.right - field[idx(2*(nx-1) - ni, j)];
-                // NEUMANN
-                return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcs.left  * dx
-                                : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcs.right * dx;
-            };
-            auto Uy = [&](int dj) -> double {
-                int nj = j + dj;
-                if (nj >= 0 && nj < ny) return field[idx(i, nj)];
-                if (bcType == BoundaryCondition::PERIODIC)
-                    return field[idx(i, (nj + ny) % ny)];
-                if (bcType == BoundaryCondition::DIRICHLET)
-                    return (nj < 0) ? 2*bcs.bottom - field[idx(i, -nj)]
-                                    : 2*bcs.top    - field[idx(i, 2*(ny-1) - nj)];
-                // NEUMANN
-                return (nj < 0) ? field[idx(i, -nj)]           + nj * 2 * bcs.bottom * dy
-                                : field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top * dy;
-            };
-            const double uij = field[idx(i,j)];
-            const double vel_x = u_curr[idx(i,j)];
-            const double vel_y = v_curr[idx(i,j)];
+            const double cx = u_curr[idx(i,j)];
+            const double cy = v_curr[idx(i,j)];
             // RHS = -(c_x*∂u/∂x + c_y*∂u/∂y) + D*(∂²u/∂x² + ∂²u/∂y²)
-            rhs[idx(i,j)] = -advectionTerm(Ux, Uy, uij, vel_x, vel_y) + diffusionTerm(Ux, Uy, uij);
+            rhs[idx(i,j)] = -advectionTerm(field, bcs, cx, cy, i, j) + diffusionTerm(field, bcs, i, j);
         }
     }
-    
+
     return rhs;
+}
+
+double Burgers2D::advectionTerm(const std::vector<double>& field, const BoundaryConditionValues& bcs,
+             double cx, double cy, int i, int j) const
+{
+    if (spatialScheme == SpatialScheme::CENTRAL) {
+        return centralDifference(field, bcs, cx, cy, i, j);
+    } else if (spatialScheme == SpatialScheme::UPWIND) {
+        return upwindDifference(field, bcs, cx, cy, i, j);
+    } else { // QUICK
+        return quickDifference(field, bcs, cx, cy, i, j);
+    }
+}
+
+double Burgers2D::diffusionTerm(const std::vector<double>& field, const BoundaryConditionValues& bcs,
+             int i, int j) const
+{
+    // Lambda functions to improve readability of the equation below
+    auto Ux = [&](int di) { return neighborX(field, bcs, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, bcs, i, j, dj); };
+    // Central differencies of the second order for the diffusion.
+    return D * ((Ux(+1) - 2.0*Ux(0) + Ux(-1)) / (dx * dx)
+              + (Uy(+1) - 2.0*Uy(0) + Uy(-1)) / (dy * dy));
+
+}
+
+double Burgers2D::centralDifference(const std::vector<double>& field, const BoundaryConditionValues& bcs,
+             double cx, double cy, int i, int j) const
+{
+    auto Ux = [&](int di) { return neighborX(field, bcs, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, bcs, i, j, dj); };
+    return cx * (Ux(+1) - Ux(-1)) / (2.0 * dx)
+         + cy * (Uy(+1) - Uy(-1)) / (2.0 * dy);
+}
+
+double Burgers2D::upwindDifference(const std::vector<double>& field, const BoundaryConditionValues& bcs,
+             double cx, double cy, int i, int j) const
+{
+    auto Ux = [&](int di) { return neighborX(field, bcs, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, bcs, i, j, dj); };
+    double dux = (cx >= 0) ? (Ux(0) - Ux(-1)) / dx : (Ux(+1) - Ux(0)) / dx;
+    double duy = (cy >= 0) ? (Uy(0) - Uy(-1)) / dy : (Uy(+1) - Uy(0)) / dy;
+    return cx * dux + cy * duy;
+}
+
+double Burgers2D::quickDifference(const std::vector<double>& field, const BoundaryConditionValues& bcs,
+             double cx, double cy, int i, int j) const
+{
+    // QUICK Scheme (Quadratic Upstream Interpolation for Convective Kinematics)
+
+    auto Ux = [&](int di) { return neighborX(field, bcs, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, bcs, i, j, dj); };
+    double dux = (cx >= 0)
+        ? (Ux(-2) - 7*Ux(-1) + 3*Ux(0) + 3*Ux(+1))   / (8.0 * dx)
+        : ( -3*Ux(-1) - 3*Ux(0) +7*Ux(+1) - Ux(+2)) / (8.0 * dx);
+
+    double duy = (cy >= 0)
+        ? (Uy(-2) - 7*Uy(-1) + 3*Uy(0) + 3*Uy(+1))   / (8.0 * dy)
+        : ( -3*Uy(-1) - 3*Uy(0) +7*Uy(+1) - Uy(+2))  / (8.0 * dy);
+
+    return cx * dux + cy * duy;
 }
 
 void Burgers2D::applyBoundaryConditions(std::vector<double>& u_vec,const BoundaryConditionValues& bcs) {
@@ -328,10 +401,12 @@ double Burgers2D::getDiffusionNumber() const {
 }
 
 /*
-    Ux(di) and Uy(dj) return neighbor values handling all boundary cases via ghost cells.
-    If inside the domain they return the value directly (e.g. Ux(+1) returns u[idx(i+1,j)]).
-    This keeps the scheme equations clean and readable while handling boundary cases
-    separately according to the boundary condition type.
+    neighborX(di) and neighborY(dj) return neighbor values handling all boundary cases via
+    ghost cells. If inside the domain they return the value directly (e.g. neighborX with
+    di = +1 returns u[idx(i+1,j)]). This keeps the scheme equations clean and readable while
+    handling boundary cases separately according to the boundary condition type.
+    Inside each spatial scheme, thin local lambdas Ux(di)/Uy(dj) alias these functions so the
+    stencil formulas stay compact (Ux(+1) instead of neighborX(field, bcs, i, j, +1)).
 
     PERIODIC BCs Take the value on the other side
     (ni + nx) % nx es. ni = -1 => (-1 + nx)/nx = nx - 1
@@ -362,9 +437,8 @@ double Burgers2D::getDiffusionNumber() const {
     ni = nx   → u[2*nx-2-nx] + (1)*2*bcRight*dx      = u[nx-2] + 2 * bcRight * dx 
     ni = nx+1 → u[2*nx-2-(nx+1)] + (2)*2*bcRight*dx  = u[nx-3] + 4 * bcRight * dx 
 
-    The lambda functions Ux and Uy are defined inside the inner loop so that the current
-    indexes i and j are captured by reference [&] rather than passed as explicit arguments.
-    This keeps the scheme equations clean (e.g. Ux(-1), Ux(+1) instead of Ux(u, i, j, -1)).
-    Redefining the lambdas at each iteration has no performance cost: they are stack-allocated
-    objects with no heap allocation, and the compiler inlines them completely under -O2/-O3.
+    Performance note: neither the member-function calls nor the adapter lambdas Ux/Uy add
+    any overhead. Everything lives in the same translation unit, so under -O2/-O3 the compiler
+    inlines both layers completely — the generated machine code is the same as writing the
+    ghost-cell logic directly inside the stencil formulas.
 */

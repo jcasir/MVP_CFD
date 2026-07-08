@@ -65,51 +65,17 @@ private:
     OutputWriter1D outputWriter;
     
     // Private methods for calculations
+
+    // Handling of the neighbor values, ghost cells included
+    double neighbor(const std::vector<double>& f, int i, int di) const;
     std::vector<double> computeRHS(const std::vector<double>& u_current) const;
     void applyBoundaryConditions(std::vector<double>& u_vec);
-    
+
     // Spatial schemes
-    template<typename FuncX>
-    double advectionTerm(FuncX Ux, double ui) const
-    {
-        if (spatialScheme == SpatialScheme::CENTRAL) {
-            return centralDifference(Ux);
-        } else if (spatialScheme == SpatialScheme::UPWIND) {
-            return upwindDifference(Ux, ui);
-        } else { // QUICK
-            return quickDifference(Ux, ui);
-        }
-    }
-
-    template<typename FuncX>
-    double diffusionTerm(FuncX Ux, double ui) const
-    {
-        // Central differencies of the second order for the diffusion.
-        return D * (Ux(+1) - 2.0*ui + Ux(-1)) / (dx * dx);
-    }
-
-    template<typename FuncX>
-    double centralDifference(FuncX Ux) const
-    {
-        return c * (Ux(+1) - Ux(-1)) / (2.0 * dx);
-    }
-
-    template<typename FuncX>
-    double upwindDifference(FuncX Ux, double ui) const
-    {
-        return c * ((c >= 0) ? (ui - Ux(-1)) / dx : (Ux(+1) - ui) / dx);
-    }
-
-    template<typename FuncX>
-    double quickDifference(FuncX Ux, double ui) const
-    {
-        // QUICK Scheme (Quadratic Upstream Interpolation for Convective Kinematics)
-
-        double dux = (c >= 0)
-            ? (Ux(-2) - 7*Ux(-1) + 3*ui + 3*Ux(+1))  / (8.0 * dx)
-            : ( -3*Ux(-1) - 3*ui +7*Ux(+1) - Ux(+2)) / (8.0 * dx);
-
-        return c * dux;
-    }
+    double advectionTerm(const std::vector<double>& field, int i) const;
+    double diffusionTerm(const std::vector<double>& field, int i) const;
+    double centralDifference(const std::vector<double>& field, int i) const;
+    double upwindDifference(const std::vector<double>& field, int i) const;
+    double quickDifference(const std::vector<double>& field, int i) const;
 
 };

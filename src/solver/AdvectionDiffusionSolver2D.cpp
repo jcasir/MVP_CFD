@@ -72,6 +72,36 @@ int AdvectionDiffusionSolver2D::idx(int i,int j) const{
     return (i * ny + j);
 }
 
+// neighborX() and neighborY() return neighbor values handling all boundary cases via ghost cells.
+// See end of file for derivation details.
+double AdvectionDiffusionSolver2D::neighborX(const std::vector<double>& field,
+             int i, int j, int di) const{
+    int ni = i + di;
+    if (ni >= 0 && ni < nx) return field[idx(ni, j)];
+    if (bcType == BoundaryCondition::PERIODIC)
+        return field[idx((ni + nx) % nx, j)];
+    if (bcType == BoundaryCondition::DIRICHLET)
+        return (ni < 0) ? 2*bcLeft  - field[idx(-ni, j)]
+                        : 2*bcRight - field[idx(2*(nx-1) - ni, j)];
+    // NEUMANN
+    return (ni < 0) ? field[idx(-ni,           j)] + ni * 2 * bcLeft  * dx
+                    : field[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcRight * dx;
+}
+
+double AdvectionDiffusionSolver2D::neighborY(const std::vector<double>& field,
+             int i, int j, int dj) const{
+    int nj = j + dj;
+    if (nj >= 0 && nj < ny) return field[idx(i, nj)];
+    if (bcType == BoundaryCondition::PERIODIC)
+        return field[idx(i, (nj + ny) % ny)];
+    if (bcType == BoundaryCondition::DIRICHLET)
+        return (nj < 0) ? 2*bcBottom - field[idx(i, -nj)]
+                        : 2*bcTop    - field[idx(i, 2*(ny-1) - nj)];
+    // NEUMANN
+    return (nj < 0) ? field[idx(i, -nj)]           + nj * 2 * bcBottom * dy
+                    : field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcTop * dy;
+}
+
 void AdvectionDiffusionSolver2D::setInitialCondition() {
 
     initialCondition->setIC(u,x,y);
@@ -207,39 +237,68 @@ std::vector<double> AdvectionDiffusionSolver2D::computeRHS(
     
     for (int i = start; i < end_x; ++i) {
         for (int j = start; j < end_y ; ++j){
-            // Ux(di) and Uy(dj) return neighbor values handling all boundary cases via ghost cells.
-            // See end of file for derivation details.
-            auto Ux = [&](int di) -> double {
-                int ni = i + di;
-                if (ni >= 0 && ni < nx) return u_current[idx(ni, j)];
-                if (bcType == BoundaryCondition::PERIODIC)
-                    return u_current[idx((ni + nx) % nx, j)];  
-                if (bcType == BoundaryCondition::DIRICHLET)
-                    return (ni < 0) ? 2*bcLeft  - u_current[idx(-ni, j)]
-                                    : 2*bcRight - u_current[idx(2*(nx-1) - ni, j)];
-                // NEUMANN
-                return (ni < 0) ? u_current[idx(-ni,           j)] + ni * 2 * bcLeft  * dx
-                                : u_current[idx(2*(nx-1) - ni, j)] + (ni - (nx-1)) * 2 * bcRight * dx;
-            };
-            auto Uy = [&](int dj) -> double {
-                int nj = j + dj;
-                if (nj >= 0 && nj < ny) return u_current[idx(i, nj)];
-                if (bcType == BoundaryCondition::PERIODIC)
-                    return u_current[idx(i, (nj + ny) % ny)];
-                if (bcType == BoundaryCondition::DIRICHLET)
-                    return (nj < 0) ? 2*bcBottom - u_current[idx(i, -nj)]
-                                    : 2*bcTop    - u_current[idx(i, 2*(ny-1) - nj)];
-                // NEUMANN
-                return (nj < 0) ? u_current[idx(i, 0)]    + nj * 2 * bcBottom * dy
-                                : u_current[idx(i, ny-1)] + (nj - (ny-1)) * 2 * bcTop * dy;
-            };
-            const double uij = u_current[idx(i,j)];
             // RHS = -(c_x*∂u/∂x + c_y*∂u/∂y) + D*(∂²u/∂x² + ∂²u/∂y²)
-            rhs[idx(i,j)] = -advectionTerm(Ux, Uy, uij) + diffusionTerm(Ux, Uy, uij);
+            rhs[idx(i,j)] = -advectionTerm(u_current, i, j) + diffusionTerm(u_current, i, j);
         }
     }
-    
+
     return rhs;
+}
+
+double AdvectionDiffusionSolver2D::advectionTerm(const std::vector<double>& field, int i, int j) const
+{
+    if (spatialScheme == SpatialScheme::CENTRAL) {
+        return centralDifference(field, i, j);
+    } else if (spatialScheme == SpatialScheme::UPWIND) {
+        return upwindDifference(field, i, j);
+    } else { // QUICK
+        return quickDifference(field, i, j);
+    }
+}
+
+double AdvectionDiffusionSolver2D::diffusionTerm(const std::vector<double>& field, int i, int j) const
+{
+    // Lambda functions to improve readability of the equation below
+    auto Ux = [&](int di) { return neighborX(field, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, i, j, dj); };
+    // Central differencies of the second order for the diffusion.
+    return D * ((Ux(+1) - 2.0*Ux(0) + Ux(-1)) / (dx * dx)
+              + (Uy(+1) - 2.0*Uy(0) + Uy(-1)) / (dy * dy));
+
+}
+
+double AdvectionDiffusionSolver2D::centralDifference(const std::vector<double>& field, int i, int j) const
+{
+    auto Ux = [&](int di) { return neighborX(field, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, i, j, dj); };
+    return c_x * (Ux(+1) - Ux(-1)) / (2.0 * dx)
+         + c_y * (Uy(+1) - Uy(-1)) / (2.0 * dy);
+}
+
+double AdvectionDiffusionSolver2D::upwindDifference(const std::vector<double>& field, int i, int j) const
+{
+    auto Ux = [&](int di) { return neighborX(field, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, i, j, dj); };
+    double dux = (c_x >= 0) ? (Ux(0) - Ux(-1)) / dx : (Ux(+1) - Ux(0)) / dx;
+    double duy = (c_y >= 0) ? (Uy(0) - Uy(-1)) / dy : (Uy(+1) - Uy(0)) / dy;
+    return c_x * dux + c_y * duy;
+}
+
+double AdvectionDiffusionSolver2D::quickDifference(const std::vector<double>& field, int i, int j) const
+{
+    // QUICK Scheme (Quadratic Upstream Interpolation for Convective Kinematics)
+
+    auto Ux = [&](int di) { return neighborX(field, i, j, di); };
+    auto Uy = [&](int dj) { return neighborY(field, i, j, dj); };
+    double dux = (c_x >= 0)
+        ? (Ux(-2) - 7*Ux(-1) + 3*Ux(0) + 3*Ux(+1))   / (8.0 * dx)
+        : ( -3*Ux(-1) - 3*Ux(0) +7*Ux(+1) - Ux(+2)) / (8.0 * dx);
+
+    double duy = (c_y >= 0)
+        ? (Uy(-2) - 7*Uy(-1) + 3*Uy(0) + 3*Uy(+1))   / (8.0 * dy)
+        : ( -3*Uy(-1) - 3*Uy(0) +7*Uy(+1) - Uy(+2))  / (8.0 * dy);
+
+    return c_x * dux + c_y * duy;
 }
 
 void AdvectionDiffusionSolver2D::applyBoundaryConditions(std::vector<double>& u_vec) {
@@ -278,10 +337,12 @@ double AdvectionDiffusionSolver2D::getDiffusionNumber() const {
 }
 
 /*
-    Ux(di) and Uy(dj) return neighbor values handling all boundary cases via ghost cells.
-    If inside the domain they return the value directly (e.g. Ux(+1) returns u[idx(i+1,j)]).
-    This keeps the scheme equations clean and readable while handling boundary cases
-    separately according to the boundary condition type.
+    neighborX(di) and neighborY(dj) return neighbor values handling all boundary cases via
+    ghost cells. If inside the domain they return the value directly (e.g. neighborX with
+    di = +1 returns u[idx(i+1,j)]). This keeps the scheme equations clean and readable while
+    handling boundary cases separately according to the boundary condition type.
+    Inside each spatial scheme, thin local lambdas Ux(di)/Uy(dj) alias these functions so the
+    stencil formulas stay compact (Ux(+1) instead of neighborX(field, i, j, +1)).
 
     PERIODIC BCs Take the value on the other side
     (ni + nx) % nx es. ni = -1 => (-1 + nx)/nx = nx - 1
@@ -312,9 +373,8 @@ double AdvectionDiffusionSolver2D::getDiffusionNumber() const {
     ni = nx   → u[2*nx-2-nx] + (1)*2*bcRight*dx      = u[nx-2] + 2 * bcRight * dx 
     ni = nx+1 → u[2*nx-2-(nx+1)] + (2)*2*bcRight*dx  = u[nx-3] + 4 * bcRight * dx 
 
-    The lambda functions Ux and Uy are defined inside the inner loop so that the current
-    indexes i and j are captured by reference [&] rather than passed as explicit arguments.
-    This keeps the scheme equations clean (e.g. Ux(-1), Ux(+1) instead of Ux(u, i, j, -1)).
-    Redefining the lambdas at each iteration has no performance cost: they are stack-allocated
-    objects with no heap allocation, and the compiler inlines them completely under -O2/-O3.
+    Performance note: neither the member-function calls nor the adapter lambdas Ux/Uy add
+    any overhead. Everything lives in the same translation unit, so under -O2/-O3 the compiler
+    inlines both layers completely — the generated machine code is the same as writing the
+    ghost-cell logic directly inside the stencil formulas.
 */

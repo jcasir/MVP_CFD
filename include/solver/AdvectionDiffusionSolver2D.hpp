@@ -63,64 +63,21 @@ private:
     PVDWriter pvdWriter;
     
     // Private methods for calculations
+
+    // Indexing for 1D array
+    int idx(int i,int j) const;
+    // Handling of the neighbor values, ghost cells included
+    double neighborX(const std::vector<double>& f, int i, int j, int di) const;
+    double neighborY(const std::vector<double>& f, int i, int j, int dj) const;
     std::vector<double> computeRHS(const std::vector<double>& u_current) const;
     void applyBoundaryConditions(std::vector<double>& u_vec);
-    
+
     // Spatial schemes
-    template<typename FuncX, typename FuncY>
-    double advectionTerm(FuncX Ux, FuncY Uy, double uij) const
-    {
-        if (spatialScheme == SpatialScheme::CENTRAL) {
-            return centralDifference(Ux, Uy);
-        } else if (spatialScheme == SpatialScheme::UPWIND) {
-            return upwindDifference(Ux, Uy, uij);
-        } else { // QUICK
-            return quickDifference(Ux, Uy, uij);
-        }
-    }
-
-    template<typename FuncX, typename FuncY>
-    double diffusionTerm(FuncX Ux, FuncY Uy, double uij) const
-    {
-        // Central differencies of the second order for the diffusion.
-        return D * ((Ux(+1) - 2.0*uij + Ux(-1)) / (dx * dx)
-                  + (Uy(+1) - 2.0*uij + Uy(-1)) / (dy * dy));
-
-    }
-
-    template<typename FuncX, typename FuncY>
-    double centralDifference(FuncX Ux, FuncY Uy) const
-    {
-        return c_x * (Ux(+1) - Ux(-1)) / (2.0 * dx) 
-             + c_y * (Uy(+1) - Uy(-1)) / (2.0 * dy);
-    }
-
-    template<typename FuncX, typename FuncY>
-    double upwindDifference(FuncX Ux, FuncY Uy, double uij) const
-    {
-        double dux = (c_x >= 0) ? (uij - Ux(-1)) / dx : (Ux(+1) - uij) / dx;
-        double duy = (c_y >= 0) ? (uij - Uy(-1)) / dy : (Uy(+1) - uij) / dy;
-        return c_x * dux + c_y * duy;
-    }
-
-    template<typename FuncX, typename FuncY>
-    double quickDifference(FuncX Ux, FuncY Uy, double uij) const
-    {
-        // QUICK Scheme (Quadratic Upstream Interpolation for Convective Kinematics)
-
-        double dux = (c_x >= 0)
-            ? (Ux(-2) - 7*Ux(-1) + 3*uij + 3*Ux(+1))   / (8.0 * dx)
-            : ( -3*Ux(-1) - 3*uij +7*Ux(+1) - Ux(+2)) / (8.0 * dx);
-
-        double duy = (c_y >= 0)
-            ? (Uy(-2) - 7*Uy(-1) + 3*uij + 3*Uy(+1))   / (8.0 * dy)
-            : ( -3*Uy(-1) - 3*uij +7*Uy(+1) - Uy(+2))  / (8.0 * dy);
-
-        return c_x * dux + c_y * duy;
-    }
-
-    //Indexing for 1D array
-    int idx(int i,int j) const;
+    double advectionTerm(const std::vector<double>& field, int i, int j) const;
+    double diffusionTerm(const std::vector<double>& field, int i, int j) const;
+    double centralDifference(const std::vector<double>& field, int i, int j) const;
+    double upwindDifference(const std::vector<double>& field, int i, int j) const;
+    double quickDifference(const std::vector<double>& field, int i, int j) const;
 
     // smart pointer for initial condition class
     std::unique_ptr<IInitialCondition2D> initialCondition;
