@@ -23,9 +23,10 @@ A numerical solver in C++ for the incompressible Navier Stokes, Burgers and adve
 - **Periodic** — u(0) = u(L)
 
 ### Initial Conditions
-- **Gaussian** — smooth bell-shaped profile 	(1D only)
-- **Square wave** — sharp step profile			(1D & 2D)
-- **Sinusoidal** — smooth periodic oscillations	(1D only)
+- **Gaussian** — smooth bell-shaped profile 		(1D only)
+- **Square wave** — sharp step profile				(1D & 2D)
+- **Sinusoidal** — smooth periodic oscillations		(1D only)
+- **Constant** — constant value across the domain 	(1D & 2D)
 
 ## Dimensionless Numbers
 
@@ -114,7 +115,7 @@ DENSITY = 1.0
 TIME_STEP = 0.001
 INITIAL_TIME = 0.0
 END_TIME = 3.0
-PPE_MAX_ITER = 50     				#PPE settings only for INCOMPRESSIBLE_NS_2D
+PPE_MAX_ITER = 2000     			# PPE settings only for INCOMPRESSIBLE_NS_2D
 PPE_TOLERANCE = 1e-6
 
 # Spatial and Time schemes
