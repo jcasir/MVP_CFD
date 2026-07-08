@@ -3,6 +3,7 @@
 *.d
 *.vtu
 *.pvd
+*.csv
 /solver
 /solver_debug
 /solver_asan
