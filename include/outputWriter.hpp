@@ -348,7 +348,7 @@ class OutputWriter1D {
 public:
     OutputWriter1D(const ConfigParser& cfg)
     {
-    	filename_ = cfg.getString("OUTPUT_DIR") + cfg.getString("OUTPUT_FILE") + ".cfg";
+    	filename_ = cfg.getString("OUTPUT_DIR") + cfg.getString("OUTPUT_FILE") + ".csv";
     	nx = cfg.getInt("GRID_POINTS");
 	    std::ofstream file(filename_);
 	    if (!file){
