@@ -83,7 +83,7 @@ int IncNS2D::idx(int i,int j) const{
 }
 double IncNS2D::neighborX(const std::vector<double>& field, const BoundaryConditionValues& bcs,
              int i, int j, int di) const{
-    // neighborX() and neighborY() return neighbor values handling all boundary cases via ghost cells.
+    // NeighborX() and neighborY() return neighbor values handling all boundary cases via ghost cells.
     // See end of file for derivation details.
     //
     // NOTE: neighborX/neighborY shift only the *transported* field, i.e. whatever
@@ -202,6 +202,7 @@ void IncNS2D::setBoundaryConditions()
     outputWriter.addScalar("Pressure",p);
     outputWriter.write();
     pvdWriter.addStep(0.0,outputFile);
+
 }
 
 void IncNS2D::solve() {
@@ -209,6 +210,9 @@ void IncNS2D::solve() {
     std::cout << "  dt = " << dt << std::endl;
     std::cout << "  t_end = " << tEnd << std::endl;
     std::cout << "  Diffusion number = " << getDiffusionNumber() << std::endl;
+
+    std::cout << " Current step | Physical time |  CFL number  | PPE residual" << '\n';
+    std::cout << "------------------------------------------------------------" << '\n';
     
     int nSteps = 0;
     while (t < tEnd) {
@@ -218,11 +222,28 @@ void IncNS2D::solve() {
             throw StabilityException("CFL", cfl, 1.0);
         }
         double dt_actual = std::min(dt, tEnd - t);
+        std::cout << std::scientific << std::setprecision(5);
+        std::cout << std::setw(13) << nSteps    << " | " <<
+                     std::setw(13) << t         << " | " <<
+                     std::setw(12) << cfl       << " | ";
         step(dt_actual);
         nSteps++;
         
         if (nSteps % 100 == 0) {
-            std::cout << "  Step " << nSteps << ", t = " << t << std::endl;
+            auto max_finder = [](double a, double b) { return std::abs(a) < std::abs(b); };
+            auto it_u = std::max_element(u.begin(), u.end(), max_finder);
+            auto it_v = std::max_element(v.begin(), v.end(), max_finder);
+            auto it_p = std::max_element(p.begin(), p.end(), max_finder);
+
+            std::cout << '\n';
+            std::cout << "=================== Max value at current step ===================\n";
+            std::cout << " Max u: " << std::setw(12) << *it_u <<
+                         " , max v: " << std::setw(12) << *it_v << 
+                         " , max p: " << std::setw(12) << *it_p << '\n';
+            std::cout << "=================================================================" << '\n' << '\n' << '\n';
+
+            std::cout << "Current step | Physical time | CFL number | PPE residual" << '\n';
+            std::cout << "--------------------------------------------------------" << '\n';
         }
         if (nSteps % output_freq == 0){
             std::string outputFile = makeVTUFilename(output_file,nSteps);
@@ -391,8 +412,15 @@ void IncNS2D::solvePressurePoisson(double dt_actual){
         }
         applyBoundaryConditions(p, p_bcs);
     }
-    if (res > ppe_toll)
-        std::cerr << "WARNING: PPE not converged after " << k << " iterations (res = " << res << ")\n";
+    std::cout << std::setw(12) << res << '\n';
+
+    if (res > ppe_toll){
+        std::cerr << "\n==========================================================================\n";   
+        std::cerr << " WARNING: PPE not converged after " << std::setw(6) << k << 
+                    " iterations (res = " << std::setw(12) << res << ")\n";
+        std::cerr << "==========================================================================\n\n"; 
+    }
+
 }
 
 double IncNS2D::advectionTerm(const std::vector<double>& field, const BoundaryConditionValues& bcs,
