@@ -124,6 +124,9 @@ private:
 
     //Output class handler
     PVDWriter pvdWriter;
+
+    // Flag to handle all-Neumann pressure BCs
+    bool Neumann_pressure_flag;
     
     // Private methods for calculations
 
@@ -134,6 +137,7 @@ private:
                  int i, int j, int di) const;
     double neighborY(const std::vector<double>& f, const BoundaryConditionValues& bcs,
                  int i, int j, int dj) const;
+    double computeDiv(const std::vector<double>& u, const std::vector<double>& v, double dx, double dy, int i, int j) const;
     std::vector<double> computeRHS(const std::vector<double>& field,
                                 const std::vector<double>& u_curr,
                                 const std::vector<double>& v_curr,

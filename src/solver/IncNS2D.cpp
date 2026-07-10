@@ -11,6 +11,8 @@ IncNS2D::IncNS2D(const ConfigParser& config)
     if (bcType == BoundaryCondition::PERIODIC) 
         throw NotImplementedYet("Periodic boundary conditions");
 
+    Neumann_pressure_flag = false;
+
     nx              = m_cfg.getInt("GRID_POINTS_X");
     ny              = m_cfg.getInt("GRID_POINTS_Y");
     Lx              = m_cfg.getDouble("DOMAIN_LENGHT_X");
@@ -124,6 +126,11 @@ double IncNS2D::neighborY(const std::vector<double>& field, const BoundaryCondit
               /*bcs.top.type == 'N'*/: field[idx(i, 2*(ny-1) - nj)] + (nj - (ny-1)) * 2 * bcs.top.value * dy;
 }
 
+double IncNS2D::computeDiv(const std::vector<double>& u, const std::vector<double>& v, double dx, double dy, int i, int j) const{
+    return ((u[idx(i+1,j)] - u[idx(i-1,j)]) / (2*dx)
+          + (v[idx(i,j+1)] - v[idx(i,j-1)]) / (2*dy));
+}
+
 void IncNS2D::setInitialCondition() {
 
     // TODO: pressure should have a dedicated IC (e.g. solved from ∇²p=0 given the initial velocity field).
@@ -147,15 +154,21 @@ void IncNS2D::setBoundaryConditions()
     // both direction of the velocity.
     auto makeBCs = [](const std::array<double, 4>& arrVal, 
                     const std::array<char, 4>& arrType,
-                    const std::string& varName)
+                    char varName)
         -> BoundaryConditionValues
     {
         constexpr std::string_view sides[] = {"Bottom", "Top", "Left", "Right"};
         // For loop to print the boundary condition values and type for each side
         std::cout << "\nPrinting " << varName << " boundary values:\n";
-        for (int i = 0; i < 4; ++i)
-            std::cout << sides[i] << ": " << ((arrType[i] == 'D') ? "Dirichlet, " : "Neumann, ") 
+        bool neumann_flag = true;
+        for (int i = 0; i < 4; ++i){
+            std::cout << sides[i] << ": " << ((arrType[i] == 'D') ? "Dirichlet, " : "Neumann, ")
                     << varName << " = " << arrVal[i] << "\n";
+            if (arrType[i] == 'D') neumann_flag = false;
+        }
+
+        if (neumann_flag && varName != 'P')
+            std::cerr << "\n WARNING: with Neumann BCs on all sides the solution is only unique up to a constant.\n\n";
 
         // this line here is the one that really sets the boundary condition inside the designated struct
         return { {arrVal[0],arrType[0]}, {arrVal[1],arrType[1]},
@@ -180,22 +193,27 @@ void IncNS2D::setBoundaryConditions()
     // inside this function would be destroyed at scope exit.
     u_bcs = makeBCs(m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_U"),
                     m_cfg.getBCs<char,4>("BOUNDARY_CONDITIONS_TYPES_U"),
-                    "U");
+                    'U');
     v_bcs = makeBCs(m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_V"),
                     m_cfg.getBCs<char,4>("BOUNDARY_CONDITIONS_TYPES_V"),
-                    "V");
+                    'V');
     p_bcs = makeBCs(m_cfg.getBCs<double,4>("BOUNDARY_CONDITIONS_VALUES_P"),
                     m_cfg.getBCs<char,4>("BOUNDARY_CONDITIONS_TYPES_P"),
-                    "P");
-    std::cout << '\n';
+                    'P');
+
+    if (p_bcs.bottom.type == 'N' &&
+        p_bcs.top.type == 'N' &&
+        p_bcs.right.type == 'N' &&
+        p_bcs.left.type == 'N') Neumann_pressure_flag = true;
 
     applyBoundaryConditions(u,u_bcs);
     applyBoundaryConditions(v,v_bcs);
+    applyBoundaryConditions(p,p_bcs);
 
     // Print initial field with initial condition and boundary condition set.
     // VTUWriter wants the number of cells so it must be given (nx - 1) because nx is the number of points
     // 1 for nz is the default to set the dimension to 2D.
-    std::cout << "Saving initial field with initial condition and boundary condition set.\n";
+    std::cout << "\nSaving initial field with initial condition and boundary condition set.\n";
     std::string outputFile = makeVTUFilename(output_file,0);
     VTUWriter outputWriter(output_dir + outputFile,(nx - 1),(ny - 1),1,dx,dy,0.0);
     outputWriter.addVector("u",u,v);
@@ -235,12 +253,19 @@ void IncNS2D::solve() {
             auto it_v = std::max_element(v.begin(), v.end(), max_finder);
             auto it_p = std::max_element(p.begin(), p.end(), max_finder);
 
+            double max_div = 0.0;
+            for (int i = 5; i < nx - 5; ++i)
+                for (int j = 5; j < ny - 5; ++j)
+                    max_div = std::max(max_div, std::abs(computeDiv(u,v,dx,dy,i,j)));
+
+
             std::cout << '\n';
-            std::cout << "=================== Max value at current step ===================\n";
+            std::cout << "================================= Max value at current step ================================\n";
             std::cout << " Max u: " << std::setw(12) << *it_u <<
-                         " , max v: " << std::setw(12) << *it_v << 
-                         " , max p: " << std::setw(12) << *it_p << '\n';
-            std::cout << "=================================================================" << '\n' << '\n' << '\n';
+                         " , max v: " << std::setw(12) << *it_v <<
+                         " , max p: " << std::setw(12) << *it_p <<
+                         " , max div(u): " << std::setw(12) << max_div << '\n';
+            std::cout << "============================================================================================" << '\n' << '\n' << '\n';
 
             std::cout << "Current step | Physical time | CFL number | PPE residual" << '\n';
             std::cout << "--------------------------------------------------------" << '\n';
@@ -386,12 +411,26 @@ void IncNS2D::solvePressurePoisson(double dt_actual){
     // is b = (rho/Δt) * div(u_star); Then it solves iterativelly the linear system
     // derived from the PPE to compute the new pressure.
 
-    // compute the source term b
-    for (int i = 1; i < nx - 1; ++i) {
-        for (int j = 1; j < ny - 1; ++j){ 
-            b[idx(i,j)] = (rho/dt_actual) 
-                        * ((u_star[idx(i+1,j)] - u_star[idx(i-1,j)]) / (2*dx)
-                        + (v_star[idx(i,j+1)] - v_star[idx(i,j-1)]) / (2*dy));
+    // Compute the source term b.
+    // With Neumann pressure BCs on all sides the discrete Poisson system is singular and has a
+    // solution only if b sums to zero (compatibility condition). Subtract the mean of b.
+    if (Neumann_pressure_flag){
+        double bsum = 0.0;
+        for (int i = 1; i < nx - 1; ++i) {
+            for (int j = 1; j < ny - 1; ++j){ 
+                b[idx(i,j)] = (rho/dt_actual) * computeDiv(u_star,v_star,dx,dy,i,j);
+                bsum += b[idx(i,j)];
+            }
+        }
+        double bmean = bsum / ((nx - 2) * (ny - 2));
+        for (int i = 1; i < nx - 1; ++i)
+            for (int j = 1; j < ny - 1; ++j) b[idx(i,j)] -= bmean;
+    }
+    else{
+        for (int i = 1; i < nx - 1; ++i) {
+            for (int j = 1; j < ny - 1; ++j){ 
+                b[idx(i,j)] = (rho/dt_actual) * computeDiv(u_star,v_star,dx,dy,i,j);
+            }
         }
     }
 
@@ -420,7 +459,13 @@ void IncNS2D::solvePressurePoisson(double dt_actual){
                     " iterations (res = " << std::setw(12) << res << ")\n";
         std::cerr << "==========================================================================\n\n"; 
     }
-
+    if (Neumann_pressure_flag){
+        // Pressure is defined up to an additive constant (all-Neumann BCs): anchor the level
+        // so that output is deterministic and comparable across runs.
+        double p_ref = p[idx(1,1)];              // any node seen by the system works
+        for (int i = 0; i < nx; ++i)
+            for (int j = 0; j < ny; ++j) p[idx(i,j)] -= p_ref;
+    }
 }
 
 double IncNS2D::advectionTerm(const std::vector<double>& field, const BoundaryConditionValues& bcs,
