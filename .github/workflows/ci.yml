@@ -26,15 +26,15 @@ jobs:
       - name: Smoke test (dry run, release)
         run: |
           mkdir -p results
-          ./solver AdvDiff1D.cfg dry
-          ./solver AdvDiff2D.cfg dry
-          ./solver Burgers2D.cfg dry
-          ./solver IncNS.cfg dry
+          ./solver configs/AdvDiff1D.cfg dry
+          ./solver configs/AdvDiff2D.cfg dry
+          ./solver configs/Burgers2D.cfg dry
+          ./solver configs/IncNS.cfg dry
 
         # Smoke test with AddressSanitizer: same as smoke test but checking for memory bugs 
       - name: Smoke test (dry run, asan)
         run: |
-          ./solver_asan AdvDiff1D.cfg dry
-          ./solver_asan AdvDiff2D.cfg dry
-          ./solver_asan Burgers2D.cfg dry
-          ./solver_asan IncNS.cfg dry
+          ./solver_asan configs/AdvDiff1D.cfg dry
+          ./solver_asan configs/AdvDiff2D.cfg dry
+          ./solver_asan configs/Burgers2D.cfg dry
+          ./solver_asan configs/IncNS.cfg dry
