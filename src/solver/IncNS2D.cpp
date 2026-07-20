@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <numbers>
 #include <algorithm>
 #include <iomanip>
 
@@ -15,12 +16,36 @@ IncNS2D::IncNS2D(const ConfigParser& config)
 
     nx              = m_cfg.getInt("GRID_POINTS_X");
     ny              = m_cfg.getInt("GRID_POINTS_Y");
-    Lx              = m_cfg.getDouble("DOMAIN_LENGHT_X");
-    Ly              = m_cfg.getDouble("DOMAIN_LENGHT_Y");
+    Lx              = m_cfg.getDouble("DOMAIN_LENGTH_X");
+    Ly              = m_cfg.getDouble("DOMAIN_LENGTH_Y");
 
     rho             = m_cfg.getDouble("DENSITY");
     ppe_max_iter    = m_cfg.getInt("PPE_MAX_ITER");
+
     ppe_toll        = m_cfg.getDouble("PPE_TOLERANCE");
+    ppe_toll_type   = m_cfg.getString("PPE_TOLL_TYPE");
+    if (ppe_toll_type != "D" && ppe_toll_type != "E")
+        throw InvalidOption("Invalid option for PPE_TOLL_TYPE (must be D or E)");
+
+    // SOR settings. omega_sor = 1.0 reduces the relaxed update to plain Gauss-Seidel,
+    // so the NONE case needs no special handling inside the sweep.
+    std::string sor_flag = m_cfg.getString("SOR_FLAG");
+    if (sor_flag == "AUTO"){
+        // Young's optimal relaxation factor for the 5-point Poisson stencil:
+        // omega = 2 / (1 + sin(pi*h)) with h the (largest-grid) spacing in index units.
+        int n_max = std::max(nx, ny);
+        omega_sor = 2.0 / (1.0 + std::sin(std::numbers::pi / (n_max - 1)));
+    }
+    else if (sor_flag == "MANUAL"){
+        omega_sor = m_cfg.getDouble("SOR_OMEGA_VALUE");
+        if (omega_sor <= 0.0 || omega_sor >= 2.0)
+            throw InvalidOption("SOR_OMEGA_VALUE must be in (0,2)");
+    }
+    else if (sor_flag == "NONE"){
+        omega_sor = 1.0;
+    }
+    else
+        throw InvalidOption("Invalid option for SOR_FLAG (must be NONE, MANUAL or AUTO)");
 
 
     // Grid initialization
@@ -434,26 +459,31 @@ void IncNS2D::solvePressurePoisson(double dt_actual){
         }
     }
 
-    double res = 2.0 * ppe_toll;
+    // With type "D" the config value is the accepted divergence of the corrected field:
+    // convert it to a residual tolerance through the identity div(u[n+1]) = (dt/rho)*r.
+    double toll = (ppe_toll_type == "D") ? (rho / dt_actual) * ppe_toll : ppe_toll;
+
+    double res = 2.0 * toll;
+    double p_gs = 0.0;
     int k = 0;
 
     // Start iteration to determine the pressure at the next time step
-    for (; k < ppe_max_iter && res > ppe_toll; ++k){
-        res = 0.0;
+    for (; k < ppe_max_iter && res > toll; ++k){
         for (int i = 1; i < nx - 1; ++i) {
             for (int j = 1; j < ny - 1; ++j){
-                double p_old = p[idx(i,j)];
-                p[idx(i,j)] = ( (p[idx(i+1,j)] + p[idx(i-1,j)]) * dy*dy
-                                  + (p[idx(i,j+1)] + p[idx(i,j-1)]) * dx*dx
-                                  -  b[idx(i,j)] * dx*dx * dy*dy ) / ( 2 * (dx*dx + dy*dy));
-                res = std::max(res, std::abs(p[idx(i,j)] - p_old));
+                p_gs = ( (p[idx(i+1,j)] + p[idx(i-1,j)]) * dy*dy
+                              + (p[idx(i,j+1)] + p[idx(i,j-1)]) * dx*dx
+                              -  b[idx(i,j)] * dx*dx * dy*dy ) / ( 2 * (dx*dx + dy*dy));
+                // SOR update; omega_sor = 1 (SOR_FLAG = NONE) gives back plain Gauss-Seidel
+                p[idx(i,j)] = (1.0 - omega_sor) * p[idx(i,j)] + omega_sor * p_gs;
             }
         }
         applyBoundaryConditions(p, p_bcs);
+        res = ppeResidual();
     }
     std::cout << std::setw(12) << res << '\n';
 
-    if (res > ppe_toll){
+    if (res > toll){
         std::cerr << "\n==========================================================================\n";   
         std::cerr << " WARNING: PPE not converged after " << std::setw(6) << k << 
                     " iterations (res = " << std::setw(12) << res << ")\n";
@@ -466,6 +496,19 @@ void IncNS2D::solvePressurePoisson(double dt_actual){
         for (int i = 0; i < nx; ++i)
             for (int j = 0; j < ny; ++j) p[idx(i,j)] -= p_ref;
     }
+}
+
+double IncNS2D::ppeResidual() const {
+    double res = 0.0;
+    double lap = 0.0;
+    for (int i = 1; i < nx - 1; ++i) {
+        for (int j = 1; j < ny - 1; ++j){
+            lap = (p[idx(i+1,j)] - 2.0 * p[idx(i,j)] + p[idx(i-1,j)]) / (dx*dx)
+                + (p[idx(i,j+1)] - 2.0 * p[idx(i,j)] + p[idx(i,j-1)]) / (dy*dy);
+            res = std::max(res, std::abs(b[idx(i,j)] - lap));
+        }
+    }
+    return res;
 }
 
 double IncNS2D::advectionTerm(const std::vector<double>& field, const BoundaryConditionValues& bcs,

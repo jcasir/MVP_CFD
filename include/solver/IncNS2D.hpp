@@ -100,6 +100,8 @@ private:
     // PPE settings and tolerance
     int ppe_max_iter;
     double ppe_toll;
+    std::string ppe_toll_type;      // "D": ppe_toll is a divergence tolerance, "E": effective residual tolerance
+    double omega_sor;               // SOR relaxation factor; 1.0 = plain Gauss-Seidel
 
    	// Solution
 	std::vector<double> u;     // x-component of velocity field. 
@@ -142,6 +144,7 @@ private:
                                 const std::vector<double>& v_curr,
                                 const BoundaryConditionValues& bcs) const;
     void solvePressurePoisson(double dt_actual);
+    double ppeResidual() const;
     void applyBoundaryConditions(std::vector<double>& field, const BoundaryConditionValues& bcs);
     
     // Spatial schemes
