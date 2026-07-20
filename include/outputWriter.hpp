@@ -35,9 +35,9 @@
 // ============================================================
 
 // ---- filename helper ----
-inline std::string makeVTUFilename(const std::string& prefix, int step, int width = 6) {
+inline std::string makeVTUFilename(const std::string& outputFilename, int step, int width = 6) {
     std::ostringstream oss;
-    oss << prefix << "_" << std::setw(width) << std::setfill('0') << step << ".vtu";
+    oss << outputFilename << "_" << std::setw(width) << std::setfill('0') << step << ".vtu";
     return oss.str();
 }
 
