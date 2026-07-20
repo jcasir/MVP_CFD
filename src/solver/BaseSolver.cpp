@@ -25,6 +25,18 @@ BaseSolver::BaseSolver(const ConfigParser& config) : m_cfg(config)
 
     output_file             = m_cfg.getString("OUTPUT_FILE");
     output_dir              = m_cfg.getString("OUTPUT_DIR");
+    // Accept OUTPUT_DIR with or without a trailing '/'
+    if (!output_dir.empty() && output_dir.back() != '/') output_dir += '/';
+
+    // Create directory for the results if it doesn't exists. Makefile already creates the results/ dir,
+    // but if the config includes additional subdirectiories they are not present when the program runs.
+    // This section ensures that the folder is always present in every case.
+    std::filesystem::path output_dir_path = output_dir;
+    if (std::filesystem::create_directories(output_dir_path)) {
+        std::cout << "Results directory succesfully created: " << output_dir_path << '\n';
+    } else {
+        std::cout << "Results directory already exists: " << output_dir_path << '\n';
+    }
 
 
     std::cout << "Base parameters of the solver initialized" << std::endl;

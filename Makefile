@@ -7,6 +7,7 @@ WARN     = -Wall -Wextra -Wpedantic
 # ── Directory ──────────────────────────────────────────────────────────────── 
 SOLDIR   = solver
 SRCDIR   = src
+RESDIR	 = results
 
 # ── Sources ──────────────────────────────────────────────────────────────────
 SOURCES  = $(wildcard $(SRCDIR)/$(SOLDIR)/*.cpp) $(wildcard $(SRCDIR)/*.cpp)
@@ -30,7 +31,9 @@ else
 endif
 
 EXECUTABLE = solver$(EXECSUFFIX)
-CONFIG     = config.cfg
+# Default config for `make run`; override per invocation with
+#   make run CONFIG=configs/Burgers2D.cfg
+CONFIG     = configs/IncNS.cfg
 
 # ── Objects and automatic dependencies ─────────────────────────────────────── 
 OBJECTS = $(patsubst %.cpp, $(OBJDIR)/%.o, $(SOURCES))
@@ -39,7 +42,7 @@ DEPFILES = $(OBJECTS:.o=.d)
 # ── Main Target ──────────────────────────────────────────────────────────────
 .PHONY: all run clean cleanall debug asan help
 
-all: $(EXECUTABLE)
+all: $(EXECUTABLE) init
 
 $(EXECUTABLE): $(OBJECTS)
 	$(CXX) $^ -o $@ $(LDFLAGS)
@@ -63,13 +66,18 @@ asan:
 run: all
 	./$(EXECUTABLE) $(CONFIG)
 
+# ── Initialization ───────────────────────────────────────────────────────────
+init: | $(RESDIR)
+
+$(RESDIR):
+	mkdir -p $(RESDIR)/
+
+
 # ── Cleaning ───────────────────────────────────────────────────────────────── 
 clean:
 	rm -rf obj/
 	rm -f solver solver_debug solver_asan
-	rm -f results/*.csv
-	rm -f results/*.vtu
-	rm -f results/*.pvd
+	rm -rf results/
 
 cleanall: clean
 	rm -f *.dat *.txt
