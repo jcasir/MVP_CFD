@@ -86,8 +86,12 @@ void AdvectionDiffusionSolver1D::solve() {
     std::cout << "\nStarting solver:" << std::endl;
     std::cout << "  dt = " << dt << std::endl;
     std::cout << "  t_end = " << tEnd << std::endl;
-    std::cout << "  CFL = " << getCFL() << std::endl;
-    std::cout << "  Diffusion number = " << getDiffusionNumber() << std::endl;
+    {
+        const StabilityNumbers s = getStabilityNumbers();
+        std::cout << "  CFL = " << s.Cx << std::endl;
+        std::cout << "  Diffusion number = " << s.dx << std::endl;
+        std::cout << "  Stability margin = " << getStabilityMargin() << " (< 1 = stable)" << std::endl;
+    }
     
     int nSteps = 0;
     while (t < tEnd) {
@@ -248,12 +252,11 @@ void AdvectionDiffusionSolver1D::applyBoundaryConditions(std::vector<double>& u_
     } 
 }
 
-double AdvectionDiffusionSolver1D::getCFL() const {
-    return (std::abs(c) * dt) / dx;  // CFL number 
-}
-
-double AdvectionDiffusionSolver1D::getDiffusionNumber() const {
-    return (D * dt) / (dx * dx);  // Diffusion number 
+BaseSolver::StabilityNumbers AdvectionDiffusionSolver1D::getStabilityNumbers() const {
+    StabilityNumbers s;
+    s.Cx = std::abs(c) * dt / dx;
+    s.dx = D * dt / (dx * dx);
+    return s;
 }
 
 /*

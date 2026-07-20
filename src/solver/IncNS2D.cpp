@@ -227,23 +227,23 @@ void IncNS2D::solve() {
     std::cout << "\nStarting solver:" << std::endl;
     std::cout << "  dt = " << dt << std::endl;
     std::cout << "  t_end = " << tEnd << std::endl;
-    std::cout << "  Diffusion number = " << getDiffusionNumber() << std::endl;
 
-    std::cout << " Current step | Physical time |  CFL number  | PPE residual" << '\n';
-    std::cout << "------------------------------------------------------------" << '\n';
-    
+    std::cout << " Current step | Physical time |  Stab. margin | PPE residual" << '\n';
+    std::cout << "-------------------------------------------------------------" << '\n';
+
     int nSteps = 0;
     while (t < tEnd) {
-        const double cfl = getCFL();
-        if (cfl > 1.0) {
-            std::cerr << "CFL exceeded limit at step " << nSteps << "\n";
-            throw StabilityException("CFL", cfl, 1.0);
-        }
+        // Silent check: throws if any von Neumann condition is violated. The margin
+        // (worst condition/limit ratio, < 1 = stable) replaces the old CFL column:
+        // for QUICK/CENTRAL the CFL alone is not the binding condition anymore.
+        checkStability(false);
+        const double margin = getStabilityMargin();
         double dt_actual = std::min(dt, tEnd - t);
         std::cout << std::scientific << std::setprecision(5);
         std::cout << std::setw(13) << nSteps    << " | " <<
                      std::setw(13) << t         << " | " <<
-                     std::setw(12) << cfl       << " | ";
+                     std::fixed << std::setprecision(3) << std::setw(11) << margin * 100    << " % | ";
+        std::cout << std::scientific << std::setprecision(5);
         step(dt_actual);
         nSteps++;
         
@@ -267,8 +267,8 @@ void IncNS2D::solve() {
                          " , max div(u): " << std::setw(12) << max_div << '\n';
             std::cout << "============================================================================================" << '\n' << '\n' << '\n';
 
-            std::cout << "Current step | Physical time | CFL number | PPE residual" << '\n';
-            std::cout << "--------------------------------------------------------" << '\n';
+            std::cout << "Current step | Physical time | Stab. margin | PPE residual" << '\n';
+            std::cout << "----------------------------------------------------------" << '\n';
         }
         if (nSteps % output_freq == 0){
             std::string outputFile = makeVTUFilename(output_file,nSteps);
@@ -584,16 +584,18 @@ void IncNS2D::applyBoundaryConditions(std::vector<double>& field,const BoundaryC
     }
 }
 
-double IncNS2D::getCFL() const {
-	double maxU = *std::max_element(u.begin(), u.end(), 
-	    [](double a, double b){ return std::abs(a) < std::abs(b); });
-	double maxV = *std::max_element(v.begin(), v.end(),
-	    [](double a, double b){ return std::abs(a) < std::abs(b); });
-	return dt * (std::abs(maxU)/dx + std::abs(maxV)/dy);  // CFL number
-}
-
-double IncNS2D::getDiffusionNumber() const {
-    return D * dt * (1.0/(dx*dx) + 1.0/(dy*dy)); // Diffusion number 
+BaseSolver::StabilityNumbers IncNS2D::getStabilityNumbers() const {
+    auto absmax = [](const std::vector<double>& f) {
+        double m = 0.0;
+        for (double v : f) m = std::max(m, std::abs(v));
+        return m;
+    };
+    StabilityNumbers s;
+    s.Cx = absmax(u) * dt / dx;
+    s.Cy = absmax(v) * dt / dy;
+    s.dx = D * dt / (dx * dx);
+    s.dy = D * dt / (dy * dy);
+    return s;
 }
 
 /*

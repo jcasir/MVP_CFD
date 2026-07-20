@@ -34,9 +34,8 @@ public:
     void saveCurrentTimeStep();
     void createOutputFile();
     
-    // Getters
-    double getCFL() const override;
-    double getDiffusionNumber() const override;
+    // Retrieve the stability numbers for the checkStability() method in BaseSolver.
+    StabilityNumbers getStabilityNumbers() const override;
     
 private:
 

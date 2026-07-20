@@ -11,8 +11,8 @@ Burgers2D::Burgers2D(const ConfigParser& config)
 
     nx          = m_cfg.getInt("GRID_POINTS_X");
     ny          = m_cfg.getInt("GRID_POINTS_Y");
-    Lx          = m_cfg.getDouble("DOMAIN_LENGHT_X");
-    Ly          = m_cfg.getDouble("DOMAIN_LENGHT_Y");
+    Lx          = m_cfg.getDouble("DOMAIN_LENGTH_X");
+    Ly          = m_cfg.getDouble("DOMAIN_LENGTH_Y");
 
     // Grid initialization
     // Non-overlapping grid for PERIODIC (domain [0,L)), overlapping for DIRICHLET/NEUMANN (nodes at exact boundaries)
@@ -169,15 +169,13 @@ void Burgers2D::solve() {
     std::cout << "\nStarting solver:" << std::endl;
     std::cout << "  dt = " << dt << std::endl;
     std::cout << "  t_end = " << tEnd << std::endl;
-    std::cout << "  Diffusion number = " << getDiffusionNumber() << std::endl;
-    
+    std::cout << "  Stability margin = " << getStabilityMargin() << " (< 1 = stable)" << std::endl;
+
     int nSteps = 0;
     while (t < tEnd) {
-        const double cfl = getCFL();
-        if (cfl > 1.0) {
-            std::cerr << "CFL exceeded limit at step " << nSteps << "\n";
-            throw StabilityException("CFL", cfl, 1.0);
-        }
+        // Silent check: throws if any von Neumann condition is violated (the velocity
+        // changes at every step, so the stability numbers change too).
+        checkStability(false);
         double dt_actual = std::min(dt, tEnd - t);
         step(dt_actual);
         nSteps++;
@@ -388,16 +386,18 @@ void Burgers2D::applyBoundaryConditions(std::vector<double>& u_vec,const Boundar
     }
 }
 
-double Burgers2D::getCFL() const {
-	double maxU = *std::max_element(u.begin(), u.end(), 
-	    [](double a, double b){ return std::abs(a) < std::abs(b); });
-	double maxV = *std::max_element(v.begin(), v.end(),
-	    [](double a, double b){ return std::abs(a) < std::abs(b); });
-	return dt * (std::abs(maxU)/dx + std::abs(maxV)/dy);  // CFL number
-}
-
-double Burgers2D::getDiffusionNumber() const {
-    return D * dt * (1.0/(dx*dx) + 1.0/(dy*dy)); // Diffusion number 
+BaseSolver::StabilityNumbers Burgers2D::getStabilityNumbers() const {
+    auto absmax = [](const std::vector<double>& f) {
+        double m = 0.0;
+        for (double v : f) m = std::max(m, std::abs(v));
+        return m;
+    };
+    StabilityNumbers s;
+    s.Cx = absmax(u) * dt / dx;
+    s.Cy = absmax(v) * dt / dy;
+    s.dx = D * dt / (dx * dx);
+    s.dy = D * dt / (dy * dy);
+    return s;
 }
 
 /*

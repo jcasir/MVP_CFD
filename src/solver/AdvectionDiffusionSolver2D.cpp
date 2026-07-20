@@ -11,8 +11,8 @@ AdvectionDiffusionSolver2D::AdvectionDiffusionSolver2D(const ConfigParser& confi
 
     nx          = m_cfg.getInt("GRID_POINTS_X");
     ny          = m_cfg.getInt("GRID_POINTS_Y");
-    Lx          = m_cfg.getDouble("DOMAIN_LENGHT_X");
-    Ly          = m_cfg.getDouble("DOMAIN_LENGHT_Y");
+    Lx          = m_cfg.getDouble("DOMAIN_LENGTH_X");
+    Ly          = m_cfg.getDouble("DOMAIN_LENGTH_Y");
 
     c_x         = m_cfg.getDouble("ADVECTION_SPEED_X");
     c_y         = m_cfg.getDouble("ADVECTION_SPEED_Y");
@@ -139,8 +139,12 @@ void AdvectionDiffusionSolver2D::solve() {
     std::cout << "\nStarting solver:" << std::endl;
     std::cout << "  dt = " << dt << std::endl;
     std::cout << "  t_end = " << tEnd << std::endl;
-    std::cout << "  CFL = " << getCFL() << std::endl;
-    std::cout << "  Diffusion number = " << getDiffusionNumber() << std::endl;
+    {
+        const StabilityNumbers s = getStabilityNumbers();
+        std::cout << "  CFL = " << (s.Cx + s.Cy) << std::endl;
+        std::cout << "  Diffusion number = " << (s.dx + s.dy) << std::endl;
+        std::cout << "  Stability margin = " << getStabilityMargin() << " (< 1 = stable)" << std::endl;
+    }
     
     int nSteps = 0;
     while (t < tEnd) {
@@ -326,14 +330,13 @@ void AdvectionDiffusionSolver2D::applyBoundaryConditions(std::vector<double>& u_
     }
 }
 
-double AdvectionDiffusionSolver2D::getCFL() const {
-    double termX = std::abs(c_x) / dx;
-    double termY = std::abs(c_y) / dy;
-    return dt * (termX + termY);  // CFL number
-}
-
-double AdvectionDiffusionSolver2D::getDiffusionNumber() const {
-    return D * dt * (1.0/(dx*dx) + 1.0/(dy*dy)); // Diffusion number 
+BaseSolver::StabilityNumbers AdvectionDiffusionSolver2D::getStabilityNumbers() const {
+    StabilityNumbers s;
+    s.Cx = std::abs(c_x) * dt / dx;
+    s.Cy = std::abs(c_y) * dt / dy;
+    s.dx = D * dt / (dx * dx);
+    s.dy = D * dt / (dy * dy);
+    return s;
 }
 
 /*
