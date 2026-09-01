@@ -1,6 +1,6 @@
 # MVP_CFD
 
-A numerical solver in C++ for the incompressible Navier Stokes, Burgers and advection-diffusion equations, currently supporting 1D and 2D formulations. Designed as a modular, extensible framework with future support for RANS equations planned.
+A numerical solver in C++ for the incompressible Navier Stokes, Burgers and advection-diffusion equations, currently supporting 1D and 2D formulations. Designed as a modular, extensible framework validated on the lid-driven cavity benchmark against Ghia et al.
 
 ## Features
 
